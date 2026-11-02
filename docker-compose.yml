@@ -1,0 +1,177 @@
+name: bitinvestcapital
+
+x-redis-node: &redis-node
+  image: redis:7.4-alpine
+  restart: unless-stopped
+  networks: [backend-net]
+  volumes:
+    - ./infra/redis/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+  healthcheck:
+    test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep PONG"]
+    interval: 5s
+    timeout: 3s
+    retries: 10
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: bitinvestcapital-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bitinvest}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-bitinvest}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [backend-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Redis cluster: 3 masters + 3 replicas ─────────────────────────
+  # Nodes announce their compose hostnames. Clients inside the network
+  # connect directly; clients on the host use the published ports
+  # 7001-7006 plus a NAT map (see REDIS_NAT_MAP in backend/.env.example).
+  redis-node-1:
+    <<: *redis-node
+    hostname: redis-node-1
+    environment: { REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}" }
+    command: ["sh", "-c", "redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\" --masterauth \"$$REDIS_PASSWORD\" --cluster-announce-hostname redis-node-1"]
+    ports: ["7001:6379"]
+    volumes:
+      - ./infra/redis/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-1-data:/data
+  redis-node-2:
+    <<: *redis-node
+    hostname: redis-node-2
+    environment: { REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}" }
+    command: ["sh", "-c", "redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\" --masterauth \"$$REDIS_PASSWORD\" --cluster-announce-hostname redis-node-2"]
+    ports: ["7002:6379"]
+    volumes:
+      - ./infra/redis/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-2-data:/data
+  redis-node-3:
+    <<: *redis-node
+    hostname: redis-node-3
+    environment: { REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}" }
+    command: ["sh", "-c", "redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\" --masterauth \"$$REDIS_PASSWORD\" --cluster-announce-hostname redis-node-3"]
+    ports: ["7003:6379"]
+    volumes:
+      - ./infra/redis/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-3-data:/data
+  redis-node-4:
+    <<: *redis-node
+    hostname: redis-node-4
+    environment: { REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}" }
+    command: ["sh", "-c", "redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\" --masterauth \"$$REDIS_PASSWORD\" --cluster-announce-hostname redis-node-4"]
+    ports: ["7004:6379"]
+    volumes:
+      - ./infra/redis/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-4-data:/data
+  redis-node-5:
+    <<: *redis-node
+    hostname: redis-node-5
+    environment: { REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}" }
+    command: ["sh", "-c", "redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\" --masterauth \"$$REDIS_PASSWORD\" --cluster-announce-hostname redis-node-5"]
+    ports: ["7005:6379"]
+    volumes:
+      - ./infra/redis/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-5-data:/data
+  redis-node-6:
+    <<: *redis-node
+    hostname: redis-node-6
+    environment: { REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}" }
+    command: ["sh", "-c", "redis-server /usr/local/etc/redis/redis.conf --requirepass \"$$REDIS_PASSWORD\" --masterauth \"$$REDIS_PASSWORD\" --cluster-announce-hostname redis-node-6"]
+    ports: ["7006:6379"]
+    volumes:
+      - ./infra/redis/redis-cluster.conf:/usr/local/etc/redis/redis.conf:ro
+      - redis-6-data:/data
+
+  # One-shot job: forms the cluster once all nodes are healthy.
+  # Idempotent — exits cleanly if the cluster already exists.
+  redis-cluster-init:
+    image: redis:7.4-alpine
+    networks: [backend-net]
+    environment: { REDIS_PASSWORD: "${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}" }
+    depends_on:
+      redis-node-1: { condition: service_healthy }
+      redis-node-2: { condition: service_healthy }
+      redis-node-3: { condition: service_healthy }
+      redis-node-4: { condition: service_healthy }
+      redis-node-5: { condition: service_healthy }
+      redis-node-6: { condition: service_healthy }
+    volumes:
+      - ./infra/redis/init-cluster.sh:/init-cluster.sh:ro
+    entrypoint: ["sh", "/init-cluster.sh"]
+    restart: "no"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: bitinvestcapital-backend
+    profiles: ["app"]
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bitinvest}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-bitinvest}?schema=public
+      REDIS_CLUSTER_NODES: redis-node-1:6379,redis-node-2:6379,redis-node-3:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
+      APP_NAME: ${APP_NAME:-BitInvest Capital}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in the root .env (32+ chars)}
+      JWT_EXPIRES_IN_SECONDS: ${JWT_EXPIRES_IN_SECONDS:-3600}
+      JWT_ISSUER: ${JWT_ISSUER:-https://bitinvestcapital.com}
+      JWT_AUDIENCE: ${JWT_AUDIENCE:-https://bitinvestcapital.com}
+      CORS_ROOT_DOMAIN: ${CORS_ROOT_DOMAIN:-bitinvestcapital.com}
+      CORS_EXTRA_ORIGINS: ${CORS_EXTRA_ORIGINS:-}
+      FRONTEND_URL: ${FRONTEND_URL:-https://bitinvestcapital.com}
+      MAIL_PROVIDER: ${MAIL_PROVIDER:?Set MAIL_PROVIDER to sendgrid or ses}
+      MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:?Set MAIL_FROM_ADDRESS}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-BitInvest Capital}
+      MAIL_SUPPORT_ADDRESS: ${MAIL_SUPPORT_ADDRESS:-support@bitinvestcapital.com}
+      MAIL_WEBSITE_URL: ${MAIL_WEBSITE_URL:-https://bitinvestcapital.com}
+      MAIL_POSTAL_ADDRESS: ${MAIL_POSTAL_ADDRESS:-}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      AWS_REGION: ${AWS_REGION:-}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      SES_CONFIGURATION_SET: ${SES_CONFIGURATION_SET:-}
+      ETH_ACCOUNT_XPUB: ${ETH_ACCOUNT_XPUB:?Set ETH_ACCOUNT_XPUB (account-level xpub, never an xprv)}
+      BTC_ACCOUNT_XPUB: ${BTC_ACCOUNT_XPUB:?Set BTC_ACCOUNT_XPUB (account-level xpub/zpub)}
+      BTC_NETWORK: ${BTC_NETWORK:-mainnet}
+      USDT_CONTRACT_ADDRESS: ${USDT_CONTRACT_ADDRESS:-0xdAC17F958D2ee523a2206206994597C13D831ec7}
+      WEBHOOK_SIGNING_SECRETS: ${WEBHOOK_SIGNING_SECRETS:?Set WEBHOOK_SIGNING_SECRETS (32+ chars each)}
+      MIN_CONFIRMATIONS_BTC: ${MIN_CONFIRMATIONS_BTC:-3}
+      MIN_CONFIRMATIONS_ETH: ${MIN_CONFIRMATIONS_ETH:-12}
+      MIN_CONFIRMATIONS_USDT: ${MIN_CONFIRMATIONS_USDT:-12}
+      REFERRAL_REWARD_RATE: ${REFERRAL_REWARD_RATE:-0.01}
+      PRICE_API_KEY: ${PRICE_API_KEY:-}
+      YIELD_SCHEDULER_ENABLED: ${YIELD_SCHEDULER_ENABLED:-true}
+      YIELD_BATCH_SIZE: ${YIELD_BATCH_SIZE:-500}
+      AFFILIATE_YIELD_REWARD_RATE: ${AFFILIATE_YIELD_REWARD_RATE:-0.05}
+      YIELD_MAX_APY_PERCENT: ${YIELD_MAX_APY_PERCENT:-100}
+    ports:
+      - "${BACKEND_PORT:-3000}:3000"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis-cluster-init: { condition: service_completed_successfully }
+    networks: [backend-net]
+
+networks:
+  backend-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-1-data:
+  redis-2-data:
+  redis-3-data:
+  redis-4-data:
+  redis-5-data:
+  redis-6-data:

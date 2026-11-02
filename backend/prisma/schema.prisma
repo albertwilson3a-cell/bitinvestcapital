@@ -1,0 +1,542 @@
+// Prisma schema — PostgreSQL
+// Columns and tables use snake_case in the database (@map / @@map);
+// the generated TypeScript client exposes camelCase fields.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum UserRole {
+  CLIENT @map("client")
+  ADMIN  @map("admin")
+
+  @@map("user_role")
+}
+
+enum AssetType {
+  USDT
+  ETH
+  BTC
+
+  @@map("asset_type")
+}
+
+enum ReferralRegistrationStatus {
+  PENDING   @map("pending")
+  VERIFIED  @map("verified")
+  QUALIFIED @map("qualified")
+  REJECTED  @map("rejected")
+
+  @@map("referral_registration_status")
+}
+
+enum TransactionType {
+  DEPOSIT        @map("deposit")
+  WITHDRAWAL     @map("withdrawal")
+  YIELD_PAYOUT   @map("yield_payout")
+  REFERRAL_BONUS @map("referral_bonus")
+  // Recurring reward to a referrer: a share of the referee's yield payout.
+  AFFILIATE_YIELD_REWARD @map("affiliate_yield_reward")
+  // Manual corrections, applied only after a second admin approves them.
+  ADJUSTMENT_CREDIT @map("adjustment_credit")
+  ADJUSTMENT_DEBIT  @map("adjustment_debit")
+
+  @@map("transaction_type")
+}
+
+enum TransactionStatus {
+  PENDING    @map("pending")
+  PROCESSING @map("processing")
+  COMPLETED  @map("completed")
+  FAILED     @map("failed")
+  CANCELLED  @map("cancelled")
+
+  @@map("transaction_status")
+}
+
+enum BlockchainNetwork {
+  ETHEREUM @map("ethereum")
+  BITCOIN  @map("bitcoin")
+
+  @@map("blockchain_network")
+}
+
+enum YieldInterval {
+  HOURLY @map("hourly")
+  DAILY  @map("daily")
+
+  @@map("yield_interval")
+}
+
+enum YieldRunStatus {
+  RUNNING   @map("running")
+  COMPLETED @map("completed")
+  FAILED    @map("failed")
+
+  @@map("yield_run_status")
+}
+
+enum AdjustmentDirection {
+  CREDIT @map("credit")
+  DEBIT  @map("debit")
+
+  @@map("adjustment_direction")
+}
+
+enum AdjustmentStatus {
+  PENDING_APPROVAL @map("pending_approval")
+  APPLIED          @map("applied")
+  REJECTED         @map("rejected")
+
+  @@map("adjustment_status")
+}
+
+enum WebhookEventStatus {
+  PROCESSED @map("processed")
+  IGNORED   @map("ignored")
+
+  @@map("webhook_event_status")
+}
+
+// ───────────────────────────── Models ────────────────────────────
+
+model User {
+  id                String    @id @default(uuid()) @db.Uuid
+  email             String    @unique @db.VarChar(320)
+  passwordHash      String    @map("password_hash")
+  isVerified        Boolean   @default(false) @map("is_verified")
+  // SHA-256 hash of the emailed token — the raw token is never stored.
+  verificationToken          String?   @unique @map("verification_token") @db.Char(64)
+  verificationTokenExpiresAt DateTime? @map("verification_token_expires_at") @db.Timestamptz(6)
+  verifiedAt                 DateTime? @map("verified_at") @db.Timestamptz(6)
+  lastLoginAt                DateTime? @map("last_login_at") @db.Timestamptz(6)
+  // SHA-256 hash of the emailed password-reset token — the raw token is never stored.
+  passwordResetTokenHash     String?   @unique @map("password_reset_token_hash") @db.Char(64)
+  passwordResetExpiresAt     DateTime? @map("password_reset_expires_at") @db.Timestamptz(6)
+  /// Sessions issued before this moment are rejected (set on password change).
+  passwordChangedAt          DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  suspendedAt                DateTime? @map("suspended_at") @db.Timestamptz(6)
+  suspensionReason           String?   @map("suspension_reason") @db.VarChar(500)
+  referralCode      String    @unique @map("referral_code") @db.VarChar(32)
+  role              UserRole  @default(CLIENT)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  referredByUserId  String?   @map("referred_by_user_id") @db.Uuid
+
+  // Self-relation: who referred this user / whom this user referred
+  referredBy        User?     @relation("UserReferredBy", fields: [referredByUserId], references: [id], onDelete: SetNull)
+  referredUsers     User[]    @relation("UserReferredBy")
+
+  // Referral ledger rows (as referrer and as referee)
+  referralsMade     Referral[] @relation("ReferralReferrer")
+  referralReceived  Referral?  @relation("ReferralReferee")
+
+  balances           Balance[]
+  dynamicAllocations DynamicAllocation[]
+  transactions       Transaction[]
+  depositAddresses   DepositAddress[]
+  yieldRatesSet      YieldRate[]
+  adjustmentsReceived  BalanceAdjustment[] @relation("AdjustmentTarget")
+  adjustmentsRequested BalanceAdjustment[] @relation("AdjustmentRequester")
+  adjustmentsDecided   BalanceAdjustment[] @relation("AdjustmentDecider")
+  settingChanges       PlatformSettingChange[]
+  auditEntries         AdminAuditLog[]
+  supportConversation  SupportConversation? @relation("SupportClient")
+  supportMessages      SupportMessage[]
+  authChallenges       AuthChallenge[]
+  withdrawals          WithdrawalRequest[] @relation("WithdrawalOwner")
+  withdrawalsReviewed  WithdrawalRequest[] @relation("WithdrawalReviewer")
+  withdrawalsCompleted WithdrawalRequest[] @relation("WithdrawalCompleter")
+  withdrawalSettings   WithdrawalSetting[]
+
+  @@index([referredByUserId])
+  @@index([role])
+  @@map("users")
+}
+
+model Referral {
+  id                    String                     @id @default(uuid()) @db.Uuid
+  referrerId            String                     @map("referrer_id") @db.Uuid
+  refereeId             String                     @unique @map("referee_id") @db.Uuid
+  registrationStatus    ReferralRegistrationStatus @default(PENDING) @map("registration_status")
+  totalCommissionEarned Decimal                    @default(0) @map("total_commission_earned") @db.Decimal(36, 18)
+  createdAt             DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  referrer User @relation("ReferralReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referee  User @relation("ReferralReferee", fields: [refereeId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId])
+  @@index([registrationStatus])
+  @@map("referrals")
+}
+
+model Balance {
+  id                  String    @id @default(uuid()) @db.Uuid
+  userId              String    @map("user_id") @db.Uuid
+  assetType           AssetType @map("asset_type")
+  balance             Decimal   @default(0) @db.Decimal(36, 18)
+  lockedBalance       Decimal   @default(0) @map("locked_balance") @db.Decimal(36, 18)
+  flexibleYieldEarned Decimal   @default(0) @map("flexible_yield_earned") @db.Decimal(36, 18)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // One balance row per user per asset
+  @@unique([userId, assetType])
+  @@map("balances")
+}
+
+model DynamicAllocation {
+  id                   String    @id @default(uuid()) @db.Uuid
+  userId               String    @map("user_id") @db.Uuid
+  assetType            AssetType @map("asset_type")
+  allocationPercentage Decimal   @map("allocation_percentage") @db.Decimal(5, 2)
+  activeStatus         Boolean   @default(true) @map("active_status")
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, assetType])
+  @@index([userId, activeStatus])
+  @@map("dynamic_allocations")
+}
+
+model Transaction {
+  id               String            @id @default(uuid()) @db.Uuid
+  userId           String            @map("user_id") @db.Uuid
+  type             TransactionType
+  assetType        AssetType         @map("asset_type")
+  amount           Decimal           @db.Decimal(36, 18)
+  status           TransactionStatus @default(PENDING)
+  network          BlockchainNetwork?
+  blockchainTxHash String?           @map("blockchain_tx_hash") @db.VarChar(128)
+  // ERC-20 log index or BTC vout — one on-chain tx can pay several addresses.
+  outputIndex      Int?              @map("output_index")
+  address          String?           @db.VarChar(128)
+  confirmations    Int?
+  blockNumber      BigInt?           @map("block_number")
+  // For referral_bonus rows: the deposit that triggered the reward.
+  sourceTransactionId String?        @unique @map("source_transaction_id") @db.Uuid
+  metadata         Json?
+  // Set on yield_payout rows: the run that produced them (one payout per user/asset/run).
+  yieldRunId       String?           @map("yield_run_id") @db.Uuid
+  confirmedAt      DateTime?         @map("confirmed_at") @db.Timestamptz(6)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user              User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  sourceTransaction Transaction?  @relation("TransactionSource", fields: [sourceTransactionId], references: [id], onDelete: Restrict)
+  derivedTransaction Transaction? @relation("TransactionSource")
+  adjustment        BalanceAdjustment?
+  withdrawal        WithdrawalRequest?
+  yieldRun          YieldRun?     @relation(fields: [yieldRunId], references: [id], onDelete: Restrict)
+
+  // Idempotency: an on-chain output can only ever be recorded once.
+  @@unique([network, blockchainTxHash, outputIndex])
+  @@unique([yieldRunId, userId, assetType])
+  @@index([userId, assetType, confirmedAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([type, status])
+  @@map("transactions")
+}
+
+/// One dedicated deposit address per user per asset, derived from a
+/// watch-only account xpub. The server never holds private keys.
+model DepositAddress {
+  id              String            @id @default(uuid()) @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  assetType       AssetType         @map("asset_type")
+  network         BlockchainNetwork
+  address         String            @unique @db.VarChar(128)
+  derivationIndex Int               @map("derivation_index")
+  derivationPath  String            @map("derivation_path") @db.VarChar(64)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, assetType])
+  @@unique([network, derivationIndex])
+  @@map("deposit_addresses")
+}
+
+/// Monotonic per-network derivation index, incremented atomically.
+model HdDerivationCounter {
+  network   BlockchainNetwork @id
+  nextIndex Int               @default(0) @map("next_index")
+  updatedAt DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("hd_derivation_counters")
+}
+
+/// Every accepted webhook delivery, keyed by the provider's event id (replay guard).
+model WebhookEvent {
+  id          String             @id @db.VarChar(128)
+  type        String             @db.VarChar(64)
+  status      WebhookEventStatus
+  reason      String?            @db.VarChar(255)
+  payloadHash String             @map("payload_hash") @db.Char(64)
+  receivedAt  DateTime           @default(now()) @map("received_at") @db.Timestamptz(6)
+
+  @@index([status])
+  @@map("webhook_events")
+}
+
+/// Versioned APY settings: the latest row per asset is in force. Rows are never
+/// edited, so every rate that was ever applied stays auditable.
+model YieldRate {
+  id              String        @id @default(uuid()) @db.Uuid
+  assetType       AssetType     @map("asset_type")
+  /// Annual percentage yield, e.g. 5.25 = 5.25% APY (compounded per payout interval).
+  apyPercent      Decimal       @map("apy_percent") @db.Decimal(9, 4)
+  interval        YieldInterval
+  isActive        Boolean       @default(true) @map("is_active")
+  note            String?       @db.VarChar(280)
+  createdByUserId String?       @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  createdBy User? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([assetType, createdAt(sort: Desc)])
+  @@map("yield_rates")
+}
+
+/// One row per payout period and interval. The unique period key makes each
+/// period payable exactly once, even with several app instances running crons.
+model YieldRun {
+  id                 String         @id @default(uuid()) @db.Uuid
+  interval           YieldInterval
+  periodKey          String         @unique @map("period_key") @db.VarChar(40)
+  periodStart        DateTime       @map("period_start") @db.Timestamptz(6)
+  periodEnd          DateTime       @map("period_end") @db.Timestamptz(6)
+  status             YieldRunStatus
+  trigger            String         @db.VarChar(16)
+  rateSnapshot       Json           @map("rate_snapshot")
+  holdingsScanned    Int            @default(0) @map("holdings_scanned")
+  payoutsCreated     Int            @default(0) @map("payouts_created")
+  affiliateRewards   Int            @default(0) @map("affiliate_rewards")
+  /// Affiliate share in force when the run was claimed (kept for resumes).
+  affiliateRate      Decimal?       @map("affiliate_rate") @db.Decimal(9, 6)
+  totals             Json?
+  error              String?        @db.VarChar(1000)
+  startedAt          DateTime       @default(now()) @map("started_at") @db.Timestamptz(6)
+  finishedAt         DateTime?      @map("finished_at") @db.Timestamptz(6)
+
+  transactions Transaction[]
+
+  @@index([status, startedAt])
+  @@map("yield_runs")
+}
+
+/// A manual balance correction. Requested by one admin, applied only when a
+/// different admin approves it; the applied change is a normal ledger entry.
+model BalanceAdjustment {
+  id            String              @id @default(uuid()) @db.Uuid
+  userId        String              @map("user_id") @db.Uuid
+  assetType     AssetType           @map("asset_type")
+  direction     AdjustmentDirection
+  amount        Decimal             @db.Decimal(36, 18)
+  reason        String              @db.VarChar(500)
+  reference     String?             @db.VarChar(120)
+  status        AdjustmentStatus    @default(PENDING_APPROVAL)
+  requestedById String              @map("requested_by_id") @db.Uuid
+  decidedById   String?             @map("decided_by_id") @db.Uuid
+  decisionNote  String?             @map("decision_note") @db.VarChar(500)
+  transactionId String?             @unique @map("transaction_id") @db.Uuid
+  createdAt     DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  decidedAt     DateTime?           @map("decided_at") @db.Timestamptz(6)
+
+  user        User         @relation("AdjustmentTarget", fields: [userId], references: [id], onDelete: Restrict)
+  requestedBy User         @relation("AdjustmentRequester", fields: [requestedById], references: [id], onDelete: Restrict)
+  decidedBy   User?        @relation("AdjustmentDecider", fields: [decidedById], references: [id], onDelete: Restrict)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("balance_adjustments")
+}
+
+/// Platform-wide parameters editable by admins (e.g. referral payout rates).
+model PlatformSetting {
+  key         String   @id @db.VarChar(64)
+  value       String   @db.VarChar(64)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("platform_settings")
+}
+
+/// Append-only history of every settings change.
+model PlatformSettingChange {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @db.VarChar(64)
+  oldValue    String?  @map("old_value") @db.VarChar(64)
+  newValue    String   @map("new_value") @db.VarChar(64)
+  note        String?  @db.VarChar(280)
+  changedById String   @map("changed_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  changedBy User @relation(fields: [changedById], references: [id], onDelete: Restrict)
+
+  @@index([key, createdAt(sort: Desc)])
+  @@map("platform_setting_changes")
+}
+
+/// Append-only record of administrative actions.
+model AdminAuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  actorId    String   @map("actor_id") @db.Uuid
+  action     String   @db.VarChar(64)
+  targetType String?  @map("target_type") @db.VarChar(32)
+  targetId   String?  @map("target_id") @db.VarChar(64)
+  details    Json?
+  ip         String?  @db.VarChar(64)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([actorId, createdAt(sort: Desc)])
+  @@map("admin_audit_log")
+}
+
+// ───────────────────────────── Live chat ─────────────────────────────
+
+enum SupportConversationStatus {
+  OPEN   @map("open")
+  CLOSED @map("closed")
+
+  @@map("support_conversation_status")
+}
+
+/// One support thread per client. Staff read/reply through the admin console.
+model SupportConversation {
+  id               String                    @id @default(uuid()) @db.Uuid
+  userId           String                    @unique @map("user_id") @db.Uuid
+  status           SupportConversationStatus @default(OPEN)
+  lastMessageAt    DateTime                  @default(now()) @map("last_message_at") @db.Timestamptz(6)
+  clientLastReadAt DateTime?                 @map("client_last_read_at") @db.Timestamptz(6)
+  staffLastReadAt  DateTime?                 @map("staff_last_read_at") @db.Timestamptz(6)
+  createdAt        DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user     User             @relation("SupportClient", fields: [userId], references: [id], onDelete: Cascade)
+  messages SupportMessage[]
+
+  @@index([status, lastMessageAt(sort: Desc)])
+  @@map("support_conversations")
+}
+
+model SupportMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  senderId       String   @map("sender_id") @db.Uuid
+  fromStaff      Boolean  @map("from_staff")
+  body           String   @db.VarChar(2000)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  conversation SupportConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User                @relation(fields: [senderId], references: [id], onDelete: Restrict)
+
+  @@index([conversationId, createdAt])
+  @@index([senderId, createdAt])
+  @@map("support_messages")
+}
+
+// ───────────────────────────── Email codes ─────────────────────────────
+
+enum AuthChallengePurpose {
+  LOGIN      @map("login")
+  WITHDRAWAL @map("withdrawal")
+
+  @@map("auth_challenge_purpose")
+}
+
+/// A 6-digit code emailed to the user to confirm a sign-in or a withdrawal.
+model AuthChallenge {
+  id          String               @id @default(uuid()) @db.Uuid
+  userId      String               @map("user_id") @db.Uuid
+  purpose     AuthChallengePurpose
+  /// HMAC of the code (keyed with a server secret); the code itself is never stored.
+  codeHash    String               @map("code_hash") @db.Char(64)
+  attempts    Int                  @default(0)
+  sendCount   Int                  @default(1) @map("send_count")
+  lastSentAt  DateTime             @default(now()) @map("last_sent_at") @db.Timestamptz(6)
+  expiresAt   DateTime             @map("expires_at") @db.Timestamptz(6)
+  consumedAt  DateTime?            @map("consumed_at") @db.Timestamptz(6)
+  /// Withdrawal challenges carry the request being confirmed.
+  payload     Json?
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, purpose, createdAt(sort: Desc)])
+  @@map("auth_challenges")
+}
+
+// ───────────────────────────── Withdrawals ─────────────────────────────
+
+enum WithdrawalStatus {
+  PENDING_REVIEW @map("pending_review")
+  APPROVED       @map("approved")
+  COMPLETED      @map("completed")
+  REJECTED       @map("rejected")
+  CANCELLED      @map("cancelled")
+
+  @@map("withdrawal_status")
+}
+
+/// A client's request to send funds to an external address. Funds are moved
+/// to locked_balance on request; staff review, send from custody and record
+/// the on-chain hash, or reject (funds return to the balance).
+model WithdrawalRequest {
+  id              String            @id @default(uuid()) @db.Uuid
+  userId          String            @map("user_id") @db.Uuid
+  assetType       AssetType         @map("asset_type")
+  network         BlockchainNetwork
+  address         String            @db.VarChar(128)
+  amount          Decimal           @db.Decimal(36, 18)
+  fee             Decimal           @db.Decimal(36, 18)
+  netAmount       Decimal           @map("net_amount") @db.Decimal(36, 18)
+  status          WithdrawalStatus  @default(PENDING_REVIEW)
+  transactionId   String            @unique @map("transaction_id") @db.Uuid
+  reviewedById    String?           @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?         @map("reviewed_at") @db.Timestamptz(6)
+  reviewNote      String?           @map("review_note") @db.VarChar(500)
+  completedById   String?           @map("completed_by_id") @db.Uuid
+  completedAt     DateTime?         @map("completed_at") @db.Timestamptz(6)
+  txHash          String?           @map("tx_hash") @db.VarChar(128)
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User        @relation("WithdrawalOwner", fields: [userId], references: [id], onDelete: Restrict)
+  reviewedBy  User?       @relation("WithdrawalReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  completedBy User?       @relation("WithdrawalCompleter", fields: [completedById], references: [id], onDelete: Restrict)
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("withdrawal_requests")
+}
+
+/// Per-asset withdrawal rules, editable by admins.
+model WithdrawalSetting {
+  assetType   AssetType @id @map("asset_type")
+  fee         Decimal   @default(0) @db.Decimal(36, 18)
+  minAmount   Decimal   @default(0) @map("min_amount") @db.Decimal(36, 18)
+  enabled     Boolean   @default(true)
+  updatedById String?   @map("updated_by_id") @db.Uuid
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("withdrawal_settings")
+}

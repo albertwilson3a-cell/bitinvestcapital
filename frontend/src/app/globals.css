@@ -1,0 +1,142 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* The product is dark-only; tokens follow shadcn/ui naming so generated components drop in. */
+:root {
+  --radius: 0.5rem;
+
+  --ink: #0a1220;
+  --vault: #0f1a2b;
+  --vault-raised: #132036;
+  --rule: #1c2940;
+  --rule-strong: #2a3a56;
+  --parchment: #e6eaf2;
+  --mist: #8a96ab;
+  --brass: #c9a96e;
+  --brass-dim: #8f7748;
+
+  --asset-btc: #e3a54c;
+  --asset-eth: #8e9eff;
+  --asset-usdt: #40b79f;
+  --up: #5cc79a;
+  --down: #e7766b;
+
+  --background: var(--ink);
+  --foreground: var(--parchment);
+  --card: var(--vault);
+  --card-foreground: var(--parchment);
+  --popover: var(--vault-raised);
+  --popover-foreground: var(--parchment);
+  --primary: var(--brass);
+  --primary-foreground: #1a1408;
+  --secondary: var(--vault-raised);
+  --secondary-foreground: var(--parchment);
+  --muted: #121d30;
+  --muted-foreground: var(--mist);
+  --accent: #16233a;
+  --accent-foreground: var(--parchment);
+  --destructive: var(--down);
+  --border: var(--rule);
+  --input: var(--rule-strong);
+  --ring: var(--brass);
+
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-ink: var(--ink);
+  --color-vault: var(--vault);
+  --color-vault-raised: var(--vault-raised);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-mist: var(--mist);
+  --color-brass: var(--brass);
+  --color-brass-dim: var(--brass-dim);
+  --color-btc: var(--asset-btc);
+  --color-eth: var(--asset-eth);
+  --color-usdt: var(--asset-usdt);
+  --color-up: var(--up);
+  --color-down: var(--down);
+
+  --animate-ribbon: ribbon-grow 900ms cubic-bezier(0.2, 0.7, 0.1, 1) both;
+  --animate-flash-up: flash-up 900ms ease-out;
+  --animate-flash-down: flash-down 900ms ease-out;
+}
+
+@keyframes ribbon-grow {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes flash-up {
+  0% { color: var(--up); }
+  100% { color: inherit; }
+}
+@keyframes flash-down {
+  0% { color: var(--down); }
+  100% { color: inherit; }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-feature-settings: "ss02" 1;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  /* Figures in tables, prices and balances line up column by column. */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--brass) 35%, transparent);
+  }
+  :focus-visible {
+    outline: 2px solid var(--brass);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

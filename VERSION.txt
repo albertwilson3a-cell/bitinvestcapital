@@ -1,0 +1,12 @@
+BitInvest Capital — version 5 (2 November 2026)
+
+New in version 5:
+- Logged-in visitors see "Go to your dashboard" / "Deposit from your dashboard" instead of "Open account"
+- Every login is confirmed with a 6-digit code sent by email
+- "Forgot password?" on the login page with an emailed reset link
+- New passwords must be typed twice; paste, copy and drag are disabled
+- Live market prices everywhere (no "Simulated" labels)
+- Withdrawals: email-code confirmation, manual admin review, approve, mark sent with tx hash, or reject
+- Admin: Withdrawals queue with risk checks, withdrawal fees/minimums, suspend/restore accounts,
+  "Rates & parameters" for interest rates
+Also includes everything from version 4 (81+ pages, live chat, markets, earn, learn).
