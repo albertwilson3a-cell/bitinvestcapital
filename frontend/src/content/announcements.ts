@@ -42,7 +42,7 @@ export const ANNOUNCEMENTS: Announcement[] = [
     tag: 'Product',
     title: 'BitInvest Capital opens: BTC, ETH and USDT deposits',
     body: [
-      'Accounts can now receive Bitcoin, Ether and Tether (ERC-20) at dedicated deposit addresses, choose how their portfolio is split and switch on variable yield.',
+      'Accounts can now receive Bitcoin, Ether and Tether (ERC-20) deposits, and invest from their dashboard to earn a variable return.',
       'The referral programme launches at the same time: invite friends with your personal link and earn a share of their deposits and yield.',
     ],
     link: { href: '/buy-crypto', label: 'How to fund your account' },

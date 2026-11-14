@@ -127,6 +127,7 @@ export interface YieldRateRow {
   asset: Asset;
   configured: boolean;
   apyPercent?: string;
+  weeklyPercent?: string;
   interval?: 'HOURLY' | 'DAILY';
   isActive?: boolean;
   periodRate?: string;
@@ -138,7 +139,8 @@ export interface YieldRateRow {
 export interface YieldOverview {
   rates: YieldRateRow[];
   affiliateYieldRewardRate: string;
-  maxApyPercent: number;
+  maxApyPercent: string;
+  maxWeeklyPercent: string;
   schedule: { daily: string; hourly: string };
 }
 

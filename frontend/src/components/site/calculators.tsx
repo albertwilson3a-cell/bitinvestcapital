@@ -11,7 +11,7 @@ import { Segmented } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
 import { useMarketCoins } from '@/hooks/use-market';
-import { usePublicRates } from '@/hooks/use-public';
+import { usePublicRates, weeklyLabel } from '@/hooks/use-public';
 import { COIN_INFO } from '@/lib/coins';
 import { formatPercent, formatUsd } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -54,7 +54,7 @@ export function RatesTable({ className }: { className?: string }) {
         <thead className="bg-vault/70 text-[12px] text-mist">
           <tr>
             <th scope="col" className="px-4 py-3 text-left font-medium">Asset</th>
-            <th scope="col" className="px-4 py-3 text-right font-medium">Annual rate (APY)</th>
+            <th scope="col" className="px-4 py-3 text-right font-medium">Rate per week</th>
             <th scope="col" className="hidden px-4 py-3 text-right font-medium sm:table-cell">Paid</th>
             <th scope="col" className="hidden px-4 py-3 text-right font-medium md:table-cell">$1,000 for 1 year</th>
           </tr>
@@ -71,7 +71,10 @@ export function RatesTable({ className }: { className?: string }) {
                   </span>
                 </span>
               </td>
-              <td className="tabular px-4 py-3.5 text-right text-[16px] font-semibold text-up">{Number(r.apyPercent).toFixed(2)}%</td>
+              <td className="tabular px-4 py-3.5 text-right">
+                <span className="block text-[16px] font-semibold text-up">{weeklyLabel(r.weeklyPercent)} <span className="text-[12px] font-normal text-mist">/ week</span></span>
+                <span className="block text-[12px] text-mist">{r.apyPercent}% a year</span>
+              </td>
               <td className="hidden px-4 py-3.5 text-right text-mist sm:table-cell">{r.interval === 'HOURLY' ? 'Every hour' : 'Every day'}</td>
               <td className="tabular hidden px-4 py-3.5 text-right md:table-cell">≈ {formatUsd(1000 * (Number(r.apyPercent) / 100))} earned</td>
             </tr>
@@ -123,7 +126,7 @@ export function YieldCalculator({ className, initialAsset }: { className?: strin
             label="Asset"
             value={rate.asset}
             onChange={setAsset}
-            options={yields.map((r) => ({ value: r.asset, label: `${r.asset} · ${Number(r.apyPercent).toFixed(1)}%` }))}
+            options={yields.map((r) => ({ value: r.asset, label: r.asset }))}
             className="w-full"
           />
         </div>
@@ -148,7 +151,7 @@ export function YieldCalculator({ className, initialAsset }: { className?: strin
           <Money label="Balance at the end" value={formatUsd(end.balance)} />
         </div>
         <p className="text-[12px] leading-relaxed text-mist">
-          At today’s rate of {Number(rate.apyPercent).toFixed(2)}% a year, paid {rate.interval === 'HOURLY' ? 'hourly' : 'daily'} and compounded. Figures are in
+          At today’s rate of {weeklyLabel(rate.weeklyPercent)} a week ({rate.apyPercent}% a year), paid {rate.interval === 'HOURLY' ? 'hourly' : 'daily'} and compounded. Figures are in
           {rate.asset === 'USDT' ? ' US dollars' : ` ${rate.asset} terms, shown at today’s USD value`}. Rates are variable and not guaranteed
           {rate.asset !== 'USDT' ? `; the dollar value also moves with the price of ${rate.asset}` : ''}.
         </p>
@@ -251,7 +254,7 @@ export function ReferralCalculator({ className }: { className?: string }) {
         </div>
         <p className="text-[12px] leading-relaxed text-mist">
           Uses today’s rates: {formatPercent(depositRate * 100)} of each deposit and {formatPercent(shareRate * 100)} of the yield your friends earn
-          {usdt ? `, assuming they hold USDT at ${Number(usdt.apyPercent).toFixed(2)}% a year` : ''}. An illustration only; rates can change.
+          {usdt ? `, assuming they hold USDT at ${usdt.apyPercent}% a year` : ''}. An illustration only; rates can change.
         </p>
       </div>
       <div className="min-h-[300px]">

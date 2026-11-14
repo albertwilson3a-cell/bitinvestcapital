@@ -20,13 +20,13 @@ import { NETWORKS } from '@/lib/coins';
 
 export const metadata: Metadata = {
   title: { absolute: `${APP_NAME} | Earn yield on Bitcoin, Ethereum and stablecoins` },
-  description: `Track 14 major cryptocurrencies, deposit BTC, ETH or USDT, choose how your portfolio is split and earn variable yield with ${APP_NAME}.`,
+  description: `Track 14 major cryptocurrencies, deposit BTC, ETH or USDT, invest from $50 and follow your returns live with ${APP_NAME}.`,
 };
 
 const HOME_FAQ = [
   { q: 'Is BitInvest Capital safe to use?', a: <>We designed the platform so that no single mistake or person can move client money: our servers hold only watch-only deposit keys, every deposit notice is cryptographically verified, balances can never go negative, and manual changes need two administrators and are permanently logged. No platform is risk-free, so please also read our <Link href="/risk-disclosure" className="text-brass">risk warning</Link>.</> },
   { q: 'How do I open an account?', a: <>Click Sign Up, enter your email and a password, and confirm your email using the link we send. Your dashboard and deposit addresses are ready as soon as you log in. <Link href="/register" className="text-brass">Sign up now</Link>.</> },
-  { q: 'What can I do with BitInvest Capital?', a: 'Open an account, deposit BTC, ETH or USDT to your own dedicated addresses, decide which assets earn yield and how your portfolio is split, and follow live prices and charts for 14 major coins. More networks are being added.' },
+  { q: 'What can I do with BitInvest Capital?', a: 'Open an account, deposit BTC, ETH or USDT, choose how much to invest (from $50), watch your investment grow live, and follow live prices and charts for 14 major coins. More networks are being added.' },
   { q: 'Is the yield guaranteed?', a: 'No. Every rate is variable and can be changed or paused. Yield on BTC and ETH is paid in those coins, so its dollar value also moves with their prices.' },
   { q: 'How often is yield paid?', a: 'Each asset is paid either daily at 00:00 UTC or hourly on the hour, as shown in the rates table. Payouts compound automatically.' },
   { q: 'Which coins can I deposit today?', a: 'Bitcoin (BTC), Ether (ETH) and Tether (USDT on Ethereum). BNB, Solana, XRP, TRON, Cardano, TON, Avalanche, Polygon, Cosmos, Arbitrum and selected ERC-20 and BEP-20 tokens are on the way.' },
@@ -42,7 +42,7 @@ export default function HomePage() {
     <>
       <div className="relative">
         <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(ellipse_60%_60%_at_20%_0%,color-mix(in_oklab,var(--brass)_10%,transparent),transparent)]" />
-        <div className="relative mx-auto grid max-w-[1200px] gap-10 px-4 pt-12 pb-14 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:pt-20">
+        <div className="relative mx-auto grid max-w-[1200px] grid-cols-[minmax(0,1fr)] gap-10 px-4 pt-12 pb-14 sm:px-6 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:pt-20">
           <HomeHero />
           <div className="flex flex-col gap-4">
             <MarketTabsCard />
@@ -63,7 +63,7 @@ export default function HomePage() {
               includes charts for every coin we cover, a projection of your returns, your referral link and live chat with our team.
             </p>
             <ul className="mt-6 space-y-3 text-[15px]">
-              {['Net worth and 24-hour change at a glance', 'Allocation sliders that always add up to 100%', 'Projected returns chart at current rates', 'Charts for all 14 coins in the Markets tab', 'Your personal invite link and referral rewards', 'Live chat with support, right inside the portal'].map((t) => (
+              {['Your investment value, updating live', 'Invest any amount from $50, move it back any time', 'Growth and projection charts at current weekly rates', 'Charts for all 14 coins in the Markets tab', 'Your personal invite link and referral rewards', 'Live chat with support, right inside the portal'].map((t) => (
                 <li key={t} className="flex items-start gap-3"><Check className="mt-0.5 size-4 shrink-0 text-up" /> {t}</li>
               ))}
             </ul>
@@ -150,7 +150,7 @@ export default function HomePage() {
         <Steps
           steps={[
             { title: 'Open your account', body: 'Register with your email and confirm it from the link we send you. It takes about a minute.' },
-            { title: 'Deposit', body: 'Get your own BTC, ETH or USDT address and send from any wallet or exchange. Deposits are credited after network confirmations.' },
+            { title: 'Deposit', body: 'Copy the BTC, ETH or USDT deposit address from your dashboard, send from any wallet or exchange, then report the transaction. We check it on the blockchain and credit your balance.' },
             { title: 'Allocate', body: 'Choose which assets earn yield and set the split of your portfolio with simple sliders. Change it whenever you like.' },
             { title: 'Earn and track', body: 'Payouts arrive automatically. Follow your returns and every transaction on your dashboard, with charts for all 14 coins.' },
           ]}
@@ -227,7 +227,7 @@ export default function HomePage() {
 
       <CtaBand
         title="Open your account in a minute."
-        body="Register with your email, confirm it, and you can follow every market, set your allocation and make your first deposit."
+        body="Register with your email, confirm it, and you can follow every market, make your first deposit and invest from $50."
         secondary={{ href: '/markets', label: 'Explore markets' }}
       />
     </>

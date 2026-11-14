@@ -7,6 +7,7 @@ import bs58check from 'bs58check';
 import { HDNodeVoidWallet, HDNodeWallet } from 'ethers';
 import { BlockchainNetwork } from '../generated/prisma/client.js';
 import { btcNetworkFor } from './chains.js';
+import { networksNeedingXpub, readFixedAddresses } from './fixed-addresses.js';
 
 export interface DerivedAddress {
   address: string;
@@ -45,8 +46,8 @@ export function toBip32Public(extendedKey: string, network: bitcoin.Network): st
 @Injectable()
 export class HdDerivationService {
   private readonly logger = new Logger(HdDerivationService.name);
-  private readonly evmAccount: HDNodeVoidWallet;
-  private readonly btcAccount: BIP32Interface;
+  private readonly evmAccount: HDNodeVoidWallet | null = null;
+  private readonly btcAccount: BIP32Interface | null = null;
   private readonly btcNetwork: bitcoin.Network;
   private readonly evmPath: string;
   private readonly btcPath: string;
@@ -56,36 +57,44 @@ export class HdDerivationService {
     this.btcPath = config.get<string>('BTC_ACCOUNT_PATH') ?? "m/84'/0'/0'";
     this.btcNetwork = btcNetworkFor(config.get<string>('BTC_NETWORK') ?? 'mainnet');
 
-    const ethXpub = config.getOrThrow<string>('ETH_ACCOUNT_XPUB');
-    const btcXpub = config.getOrThrow<string>('BTC_ACCOUNT_XPUB');
-    if (PUBLIC_TEST_XPUBS.has(ethXpub) || PUBLIC_TEST_XPUBS.has(btcXpub)) {
-      if (config.get<string>('NODE_ENV') === 'production') {
-        throw new Error('Refusing to start: account xpubs come from the public BIP test mnemonic.');
+    // Assets with a shared deposit address (DEPOSIT_ADDRESS_*) need no xpub.
+    const needed = networksNeedingXpub(readFixedAddresses(config));
+    const production = config.get<string>('NODE_ENV') === 'production';
+
+    if (needed.has(BlockchainNetwork.ETHEREUM)) {
+      const ethXpub = config.get<string>('ETH_ACCOUNT_XPUB');
+      if (!ethXpub) throw new Error('ETH_ACCOUNT_XPUB is required unless DEPOSIT_ADDRESS_ETH and DEPOSIT_ADDRESS_USDT are both set.');
+      this.checkTestKey(ethXpub, production);
+      const evm = HDNodeWallet.fromExtendedKey(ethXpub);
+      if (!(evm instanceof HDNodeVoidWallet)) {
+        throw new Error('ETH_ACCOUNT_XPUB contains a private key. Supply the neutered xpub only.');
       }
-      this.logger.warn('Using PUBLIC TEST xpubs. Anyone can spend funds sent to these addresses. Dev only.');
+      if (evm.depth !== 3) this.logger.warn(`ETH account xpub depth is ${evm.depth}; expected 3 (account level).`);
+      this.evmAccount = evm;
     }
 
-    const evm = HDNodeWallet.fromExtendedKey(ethXpub);
-    if (!(evm instanceof HDNodeVoidWallet)) {
-      throw new Error('ETH_ACCOUNT_XPUB contains a private key. Supply the neutered xpub only.');
+    if (needed.has(BlockchainNetwork.BITCOIN)) {
+      const btcXpub = config.get<string>('BTC_ACCOUNT_XPUB');
+      if (!btcXpub) throw new Error('BTC_ACCOUNT_XPUB is required unless DEPOSIT_ADDRESS_BTC is set.');
+      this.checkTestKey(btcXpub, production);
+      const btc = bip32.fromBase58(toBip32Public(btcXpub, this.btcNetwork), this.btcNetwork);
+      if (!btc.isNeutered()) {
+        throw new Error('BTC_ACCOUNT_XPUB contains a private key. Supply the neutered xpub only.');
+      }
+      if (btc.depth !== 3) this.logger.warn(`BTC account xpub depth is ${btc.depth}; expected 3 (account level).`);
+      this.btcAccount = btc;
     }
-    this.evmAccount = evm;
+  }
 
-    const btc = bip32.fromBase58(
-      toBip32Public(btcXpub, this.btcNetwork),
-      this.btcNetwork,
-    );
-    if (!btc.isNeutered()) {
-      throw new Error('BTC_ACCOUNT_XPUB contains a private key. Supply the neutered xpub only.');
-    }
-    this.btcAccount = btc;
+  private checkTestKey(xpub: string, production: boolean) {
+    if (!PUBLIC_TEST_XPUBS.has(xpub)) return;
+    if (production) throw new Error('Refusing to start: account xpubs come from the public BIP test mnemonic.');
+    this.logger.warn('Using PUBLIC TEST xpubs. Anyone can spend funds sent to these addresses. Dev only.');
+  }
 
-    if (evm.depth !== 3 || btc.depth !== 3) {
-      this.logger.warn(
-        `Account xpub depth is ETH=${evm.depth}, BTC=${btc.depth}; expected 3 (account level). ` +
-          'Make sure your wallet software scans the same paths.',
-      );
-    }
+  /** Whether per-client addresses can be derived on this network. */
+  isEnabled(network: BlockchainNetwork): boolean {
+    return network === BlockchainNetwork.ETHEREUM ? !!this.evmAccount : !!this.btcAccount;
   }
 
   derive(network: BlockchainNetwork, index: number): DerivedAddress {
@@ -93,9 +102,11 @@ export class HdDerivationService {
       throw new RangeError(`Derivation index out of range: ${index}`);
     }
     if (network === BlockchainNetwork.ETHEREUM) {
+      if (!this.evmAccount) throw new Error('No ETH account xpub configured');
       const child = this.evmAccount.deriveChild(EXTERNAL_CHAIN).deriveChild(index);
       return { address: child.address, path: `${this.evmPath}/${EXTERNAL_CHAIN}/${index}` };
     }
+    if (!this.btcAccount) throw new Error('No BTC account xpub configured');
     const child = this.btcAccount.derive(EXTERNAL_CHAIN).derive(index);
     const { address } = bitcoin.payments.p2wpkh({ pubkey: child.publicKey, network: this.btcNetwork });
     if (!address) throw new Error('Failed to derive P2WPKH address');

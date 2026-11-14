@@ -5,7 +5,7 @@ import { api } from '@/lib/api';
 import type { Asset, Me } from '@/lib/types';
 
 export interface PublicRates {
-  yields: { asset: Asset; apyPercent: string; interval: 'DAILY' | 'HOURLY' }[];
+  yields: { asset: Asset; apyPercent: string; weeklyPercent: string; interval: 'DAILY' | 'HOURLY' }[];
   referral: { depositRewardRate: string; affiliateYieldRate: string };
 }
 
@@ -14,8 +14,9 @@ export function usePublicRates() {
   return useQuery({
     queryKey: ['public-rates'],
     queryFn: () => api<PublicRates>('market/rates', { auth: false }),
-    staleTime: 60_000,
-    refetchInterval: 120_000,
+    // Rates are edited by staff; keep every open page within ~20 s of a change.
+    staleTime: 10_000,
+    refetchInterval: 20_000,
   });
 }
 
@@ -32,3 +33,6 @@ export function useOptionalMe() {
     retry: false,
   });
 }
+
+/** "0.1742%" style weekly rate: up to 4 decimals, trailing zeros dropped. */
+export const weeklyLabel = (weeklyPercent: string | number) => `${Number(Number(weeklyPercent).toFixed(4))}%`;

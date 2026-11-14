@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -16,17 +17,28 @@ const upper = ({ value }: TransformFnParams): unknown =>
   typeof value === 'string' ? value.trim().toUpperCase() : value;
 
 export class UpdateYieldRateDto {
-  /** Annual percentage yield, e.g. 5.25 for 5.25% APY. */
-  @IsNumber({ allowNaN: false, allowInfinity: false, maxDecimalPlaces: 4 }, {
-    message: 'apyPercent must be a number with at most 4 decimal places',
+  /** Return per week, e.g. 0.18 for 0.18% a week. Preferred; give this or apyPercent. */
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false, maxDecimalPlaces: 6 }, {
+    message: 'weeklyPercent must be a number with at most 6 decimal places',
   })
   @Min(0)
-  @Max(1000)
-  apyPercent!: number;
+  @Max(121.069630, { message: 'highest rate allowed is 121.0696% a week' })
+  weeklyPercent?: number;
+
+  /** Annual percentage yield, e.g. "5.25" for 5.25% APY. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(31)
+  @Matches(/^\d+(?:\.\d{1,4})?$/, {
+    message: 'apyPercent must be a non-negative decimal string with at most 4 decimal places',
+  })
+  apyPercent?: string;
 
   @Transform(upper)
+  @IsOptional()
   @IsEnum(YieldInterval, { message: 'interval must be HOURLY or DAILY' })
-  interval!: YieldInterval;
+  interval: YieldInterval = YieldInterval.DAILY;
 
   @IsOptional()
   @IsBoolean()

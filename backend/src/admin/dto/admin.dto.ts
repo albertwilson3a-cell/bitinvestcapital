@@ -116,6 +116,11 @@ export class UpdateSettingsDto {
   @Matches(/^0(\.\d{1,6})?$/, { message: 'affiliateYieldRewardRate must be a fraction like 0.05' })
   affiliateYieldRewardRate?: string;
 
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{1,6}(\.\d{1,2})?$/, { message: 'minInvestmentUsd must be a dollar amount like 50' })
+  minInvestmentUsd?: string;
+
   @Transform(trim)
   @IsString()
   @MinLength(5, { message: 'note must say why the change is being made' })

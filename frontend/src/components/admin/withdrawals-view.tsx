@@ -166,10 +166,10 @@ function Settings() {
       <h2 className="text-[15px] font-semibold">Withdrawal settings</h2>
       <p className="mt-0.5 text-[13px] text-mist">Network fee charged to the client and minimum amount per asset, in asset units. Switch an asset off to pause new withdrawals.</p>
       {!data ? <Skeleton className="mt-4 h-28" /> : (
-        <table className="mt-3 w-full text-[13px]">
+        <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[520px] text-[13px]">
           <thead className="text-left text-[12px] text-mist"><tr><th className="pb-2 font-medium">Asset</th><th className="pb-2 font-medium">Fee</th><th className="pb-2 font-medium">Minimum</th><th className="pb-2 font-medium">Enabled</th><th /></tr></thead>
           <tbody>{data.map((s) => <SettingRow key={`${s.asset}-${s.updatedAt}`} s={s} />)}</tbody>
-        </table>
+        </table></div>
       )}
     </section>
   );

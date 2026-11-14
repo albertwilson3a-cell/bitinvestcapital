@@ -92,7 +92,9 @@ export function useYieldHistory() {
 
 export interface Holding {
   asset: Asset;
+  /** Wallet + invested + reserved for withdrawal. */
   amount: number;
+  invested: number;
   locked: number;
   price: number | null;
   change24h: number | null;
@@ -113,13 +115,15 @@ export function usePortfolio() {
     const quote = (a: Asset) => prices.data?.quotes.find((q) => q.asset === a);
     const rows = ASSETS.map((asset) => {
       const wallet = wallets.data.find((w) => w.asset === asset)!;
-      const amount = Number(wallet.balance) + Number(wallet.lockedBalance);
+      const invested = Number(wallet.investedBalance ?? 0);
+      const amount = Number(wallet.balance) + Number(wallet.lockedBalance) + invested;
       const q = quote(asset);
       const price = q ? Number(q.usd) : null;
       const yieldEarned = Number(wallet.flexibleYieldEarned);
       return {
         asset,
         amount,
+        invested,
         locked: Number(wallet.lockedBalance),
         price,
         change24h: q?.change24hPercent ?? null,

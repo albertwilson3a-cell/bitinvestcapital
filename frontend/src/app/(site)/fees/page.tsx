@@ -10,7 +10,7 @@ const ROWS: { item: string; fee: string; note: string; free: boolean }[] = [
   { item: 'Opening an account', fee: 'Free', note: 'No sign-up or monthly account fees.', free: true },
   { item: 'Receiving deposits', fee: 'Free', note: 'We don’t charge to receive BTC, ETH or USDT. The sending network charges its own fee.', free: true },
   { item: 'Earn (yield)', fee: 'No management fee', note: 'The rate shown on the Earn page is the rate credited to you.', free: true },
-  { item: 'Changing your allocation', fee: 'Free', note: 'Change as often as you like.', free: true },
+  { item: 'Investing and moving funds back to your wallet', fee: 'Free', note: 'As often as you like. Minimum investment $50.', free: true },
   { item: 'Referral programme', fee: 'Free', note: 'Rewards are paid to you; nothing is deducted from your friends.', free: true },
   { item: 'Live chat and email support', fee: 'Free', note: 'For all clients.', free: true },
   { item: 'Withdrawals', fee: 'Network fee only', note: 'A small fee per asset covers the blockchain network fee. It is shown before you confirm, and every withdrawal is reviewed by our team before release.', free: false },
@@ -68,7 +68,7 @@ export default function FeesPage() {
         <FeatureGrid
           items={[
             { icon: UserPlus, title: 'Free account', body: 'Register in a minute, with no minimum balance.' },
-            { icon: ArrowDownToLine, title: 'Free deposits', body: 'Dedicated addresses for every supported asset.' },
+            { icon: ArrowDownToLine, title: 'Free deposits', body: 'No fee from us on BTC, ETH or USDT deposits.' },
             { icon: Percent, title: 'Earn with no fee', body: 'The published rate is what you receive.' },
             { icon: Coins, title: 'Live market data', body: 'Prices and charts for 14 coins.' },
             { icon: Gift, title: 'Referral rewards', body: 'Earn when friends deposit and earn.' },

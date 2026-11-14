@@ -1,7 +1,7 @@
 'use client';
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { usePublicRates } from '@/hooks/use-public';
+import { usePublicRates, weeklyLabel } from '@/hooks/use-public';
 import { formatUsd } from '@/lib/format';
 import { growth } from '@/components/site/calculators';
 
@@ -15,8 +15,12 @@ export function AssetRate({ asset }: { asset: string }) {
       {r ? (
         <>
           <p className="text-[13px] text-mist">Current rate</p>
-          <p className="tabular mt-1 text-[52px] leading-none font-semibold tracking-[-0.03em] text-brass">{Number(r.apyPercent).toFixed(2)}%</p>
-          <p className="mt-2 text-[14px] text-mist">a year (APY), paid {r.interval === 'HOURLY' ? 'every hour' : 'every day at 00:00 UTC'}. Variable, not guaranteed.</p>
+          <p className="tabular mt-1 text-[clamp(2.5rem,9vw,3.25rem)] leading-none font-semibold tracking-[-0.03em] text-brass">
+            {weeklyLabel(r.weeklyPercent)}<span className="ml-2 text-[16px] font-medium tracking-normal text-mist">a week</span>
+          </p>
+          <p className="mt-2 text-[14px] text-mist">
+            That is {r.apyPercent}% a year (APY), paid {r.interval === 'HOURLY' ? 'every hour' : 'every day at 00:00 UTC'} and compounded. Variable, not guaranteed.
+          </p>
         </>
       ) : (
         <p className="text-[15px] text-mist">Earning on {asset} is currently paused. Check back for updates.</p>

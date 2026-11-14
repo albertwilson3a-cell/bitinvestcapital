@@ -18,13 +18,13 @@ export class PublicRatesController {
   ) {}
 
   @Get('rates')
-  @Header('cache-control', 'public, max-age=60')
+  @Header('cache-control', 'no-store')
   async rates_() {
     const current = await this.rates.current();
     const yields = Object.values(AssetType).flatMap((asset) => {
       const r = current[asset];
       return r?.isActive && r.apyPercent.gt(0)
-        ? [{ asset, apyPercent: r.apyPercent.toString(), interval: r.interval }]
+        ? [{ asset, apyPercent: r.apyPercent.toString(), weeklyPercent: YieldRatesService.weeklyOf(r), interval: r.interval }]
         : [];
     });
     const [depositRewardRate, affiliateYieldRate] = await Promise.all([

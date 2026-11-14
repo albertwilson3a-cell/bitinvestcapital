@@ -17,13 +17,13 @@ const EXAMPLE = [1, 7, 30, 90, 180, 365].map((days) => {
 });
 
 const EARN_FAQ = [
-  { q: 'How do I start earning?', a: 'Deposit an asset, then switch it on in the allocation panel of your dashboard and save. Earning starts with the next full payout period.' },
+  { q: 'How do I start earning?', a: 'Deposit to your BitInvest wallet, then press Invest on your dashboard and choose an amount (minimum $50). Earning starts with the next full payout period.' },
   { q: 'When is yield paid?', a: 'Daily assets are paid at 00:00 UTC for the previous day. Hourly assets are paid on the hour for the previous hour. Each payout appears in your activity list.' },
   { q: 'Why didn’t my deposit earn yield straight away?', a: 'Yield is paid on the balance you held for the whole period. A deposit that arrives part-way through a period starts earning from the next one, which keeps the calculation fair for everyone.' },
   { q: 'Is my yield paid in dollars?', a: 'No. Yield is paid in the asset itself: BTC yield in BTC, ETH in ETH and USDT in USDT. The dollar value of BTC and ETH yield therefore moves with their prices.' },
   { q: 'Can rates change?', a: 'Yes. All rates are variable. They can be raised, lowered or paused, and the rate in force at the time of each payout is the one applied.' },
   { q: 'Does yield compound?', a: 'Yes. Each payout is added to your balance, so the next one is calculated on the larger amount.' },
-  { q: 'Can I stop earning?', a: 'Yes. Switch the asset off in your allocation at any time. It stops earning from the next period.' },
+  { q: 'Can I stop earning?', a: 'Yes. Use “Move to wallet” at any time to take part or all of your investment back to your wallet. Funds in the wallet don’t earn and can be withdrawn.' },
   { q: 'Is there a minimum amount?', a: 'No minimum. Very small balances may earn less than the smallest unit of the asset in a single period, in which case that period’s payout is zero.' },
 ];
 
@@ -47,8 +47,8 @@ export default function EarnPage() {
       <Section eyebrow="How it works" title="Four steps from deposit to payout.">
         <Steps
           steps={[
-            { title: 'Deposit', body: 'Send BTC, ETH or USDT to your dedicated deposit address. It is credited after network confirmations.' },
-            { title: 'Switch on earning', body: 'In your allocation, choose which assets earn and how your portfolio is split, then save.' },
+            { title: 'Deposit', body: 'Send BTC, ETH or USDT to the deposit address in your dashboard and report the transaction. It is credited once our team confirms it on the blockchain.' },
+            { title: 'Invest', body: 'Choose how much to invest, from $50. The rest stays in your BitInvest wallet.' },
             { title: 'Hold for a full period', body: 'Yield is calculated on the balance you held for the whole day (or hour), measured in UTC.' },
             { title: 'Get paid and compound', body: 'The payout is added to your balance and the next period earns on the larger amount.' },
           ]}
@@ -81,12 +81,12 @@ export default function EarnPage() {
         </p>
       </Section>
 
-      <Section eyebrow="Your allocation" title="You decide what earns.">
+      <Section eyebrow="Your investment" title="You decide how much earns.">
         <FeatureGrid
           items={[
             { icon: PieChart, title: 'Choose your split', body: 'Set how your portfolio is divided between assets with simple sliders. The total always comes to exactly 100%.' },
             { icon: Layers, title: 'Switch assets on or off', body: 'Only assets you include earn yield. Leave an asset out and it is simply held.' },
-            { icon: RefreshCw, title: 'Change any time', body: 'Updates apply from the next payout period. There are no lock-ups on your allocation.' },
+            { icon: RefreshCw, title: 'Change any time', body: 'Invest more or move funds back to your wallet whenever you like. There are no lock-ups.' },
           ]}
         />
       </Section>
@@ -129,7 +129,7 @@ export default function EarnPage() {
         <FaqList items={EARN_FAQ} />
       </Section>
 
-      <CtaBand title="Start earning on your crypto." body="Open an account, make a deposit and switch on earning in your allocation. It takes a few minutes." secondary={{ href: '/risk-disclosure', label: 'Read the risk disclosure' }} />
+      <CtaBand title="Start earning on your crypto." body="Open an account, make a deposit and invest from $50. It takes a few minutes." secondary={{ href: '/risk-disclosure', label: 'Read the risk disclosure' }} />
     </>
   );
 }

@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useMarketCoins } from '@/hooks/use-market';
-import { useOptionalMe, usePublicRates, type PublicRates } from '@/hooks/use-public';
+import { useOptionalMe, usePublicRates } from '@/hooks/use-public';
 import { formatPrice } from '@/lib/format';
 
 const pct = (rate: string) => `${Number((Number(rate) * 100).toFixed(2))}%`;
@@ -21,10 +21,6 @@ export function HomeHero() {
   const rates = usePublicRates().data;
   const me = useOptionalMe().data;
   const [email, setEmail] = useState('');
-  const best = rates?.yields.reduce<PublicRates['yields'][number] | null>(
-    (top, r) => (!top || Number(r.apyPercent) > Number(top.apyPercent) ? r : top),
-    null,
-  );
 
   function start(e: React.FormEvent) {
     e.preventDefault();
@@ -34,17 +30,10 @@ export function HomeHero() {
 
   return (
     <div className="flex flex-col justify-center">
-      {best ? (
-        <p className="tabular text-[clamp(3.25rem,7vw,5.25rem)] leading-[0.95] font-semibold tracking-[-0.03em] text-brass">
-          {Number(best.apyPercent).toFixed(2)}%
-          <span className="ml-3 align-middle text-[clamp(0.85rem,1.4vw,1rem)] font-medium tracking-normal text-mist">a year on {best.asset}*</span>
-        </p>
-      ) : (
-        <p className="text-[13px] font-medium tracking-[0.14em] text-brass uppercase">Bitcoin · Ethereum · Stablecoins</p>
-      )}
+      <p className="text-[13px] font-medium tracking-[0.14em] text-brass uppercase">Bitcoin · Ethereum · Stablecoins</p>
       <h1 className="mt-5 max-w-[20ch] text-balance font-display text-[clamp(2.4rem,5vw,3.75rem)] leading-[1.02]">Put your crypto to work.</h1>
       <p className="mt-5 max-w-[48ch] text-[16px] leading-relaxed text-mist">
-        Follow 14 major cryptocurrencies, deposit to your own dedicated addresses, choose how your portfolio is split and earn variable yield
+        Follow 14 major cryptocurrencies, deposit BTC, ETH and USDT in a few steps, invest any amount from $50 and watch your investment grow live
         credited straight to your balance.
       </p>
       <div className="mt-7 flex flex-wrap gap-x-8 gap-y-3">
@@ -86,7 +75,6 @@ export function HomeHero() {
       </p>
       </>
       )}
-      {best && <p className="pt-2 text-[11px] text-mist">*Current variable rate, paid {best.interval === 'HOURLY' ? 'hourly' : 'daily'}. Not guaranteed.</p>}
     </div>
   );
 }

@@ -128,6 +128,17 @@ export class MailService implements OnApplicationBootstrap {
     }, [tag]);
   }
 
+  async sendDepositUpdate(to: string, heading: string, paragraphs: string[], details: { label: string; value: string }[], tag: string) {
+    return this.notice(to, {
+      subject: `${heading} | ${this.brand.name}`,
+      preheader: paragraphs[0] ?? heading,
+      heading,
+      paragraphs,
+      details,
+      reason: 'there is an update on a deposit to your account.',
+    }, [tag]);
+  }
+
   private async notice(to: string, p: Omit<NoticeEmailParams, 'brand' | 'recipientEmail'>, tags: string[]) {
     const { subject, html, text } = renderNoticeEmail({ ...p, brand: this.brand, recipientEmail: to });
     const result = await this.transport.send({

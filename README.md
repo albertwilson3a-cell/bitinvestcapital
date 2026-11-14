@@ -331,3 +331,59 @@ Live prices from CoinGecko (`PRICE_PROVIDER=coingecko`, the default). One shared
 dashboard and ledger; requests are spaced to stay inside CoinGecko’s rate limit, and the last good
 data is served if CoinGecko is briefly unreachable. A free demo key (`PRICE_API_KEY`) raises the limit;
 use a paid plan in production. `simulated` exists only for automated tests and is refused in production.
+
+
+## Deposit addresses (shared) and deposit reports
+
+The deposit addresses clients see are set in `backend/.env`:
+
+```
+DEPOSIT_ADDRESS_BTC=bc1q84ma6k9jpmtj7m94fxy5jhufcp0hr68fqx9xvf
+DEPOSIT_ADDRESS_ETH=0x86EF1E2Fb0454218d3eADe4aBCfD359F24B8068e
+DEPOSIT_ADDRESS_USDT=0x86EF1E2Fb0454218d3eADe4aBCfD359F24B8068e
+```
+
+They are checked when the server starts (a typo stops it starting rather than reaching clients),
+and they cannot be changed from the admin website.
+
+Because every client sees the same address, the blockchain alone cannot say who sent a payment:
+
+1. The client sends crypto, then presses **I've sent it** in the Deposit window and pastes the transaction hash.
+2. Admin → **Deposits** lists reports to check. **Check on blockchain** looks the transaction up
+   (mempool.space for BTC, a public Ethereum node for ETH/USDT) and shows the amount that reached the address,
+   the confirmations and the sender.
+3. The admin credits the amount that actually arrived (or rejects with a reason). The client is emailed at each step.
+
+A transaction hash can back only one open or credited report, across all accounts.
+Remove a `DEPOSIT_ADDRESS_…` line to go back to a personal address per client (derived from the xpub).
+
+To add these settings to an existing installation without changing anything else: `node scripts/setup-local.mjs`.
+
+
+## Returns per week (admin)
+
+Admin → **Rates & parameters** → **Returns per week** has one slot per active coin.
+Enter the weekly return (e.g. `0.1742` for 0.1742% a week). The server stores it and derives the yearly
+rate used for payouts: APY = (1 + weekly)^(365/7) − 1, so seven daily payouts compound to exactly the weekly
+figure. Every change is versioned, audited and shown to clients within ~20 seconds.
+
+The highest allowed rate is 100% a year (≈1.3382% a week). `YIELD_MAX_APY_PERCENT` can lower it but not raise it.
+
+## Light and dark theme
+
+Visitors pick Light, Dark or Auto (follows the device) in the footer under Preference, or with the sun/moon
+button in the dashboard and admin console. The choice is stored in the browser (`bic-theme`).
+
+
+## Wallet and investment
+
+Each balance row has two parts: `balance` (the BitInvest wallet, where deposits land and the only
+source of withdrawals) and `invested_balance` (earns the asset's weekly rate). Clients move funds with
+`POST /api/investments/invest` (minimum `investment.min_usd`, default $50, admin-editable) and
+`POST /api/investments/redeem` (amount or `all: true`). Both write INVEST / REDEEM ledger rows and use
+conditional updates, so neither side can be overdrawn. `GET /api/investments` returns the per-coin
+summary (with `earningPrincipal`: money invested during the running period starts earning next period);
+`GET /api/investments/:asset/history` rebuilds the invested amount over time from the ledger.
+
+The payout engine pays only on `invested_balance`, excludes amounts invested after the period started,
+and adds each payout to the investment (compounding). Referral rewards go to the wallet.

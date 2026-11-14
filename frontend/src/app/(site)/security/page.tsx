@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 };
 
 const FLOW = [
-  { icon: KeyRound, title: 'Address issued', body: 'Your deposit address is derived from a watch-only public key. Our servers can create addresses but cannot sign transactions.' },
+  { icon: KeyRound, title: 'You report it', body: 'After sending, you report the transaction hash from your dashboard. A transaction can be claimed by only one account, so nobody else can take credit for it.' },
   { icon: Clock4, title: 'Network confirms', body: 'We wait for the required confirmations (3 on Bitcoin, 12 on Ethereum) before a deposit is treated as final.' },
-  { icon: FileCheck2, title: 'Notice verified', body: 'The deposit notice must carry a valid cryptographic signature and a fresh timestamp. Forged, altered or replayed notices are rejected.' },
+  { icon: FileCheck2, title: 'Checked on-chain', body: 'Our team checks the transaction on the blockchain: the right network, our address, the amount received and the sender. Only the amount that actually arrived is credited.' },
   { icon: DatabaseZap, title: 'Credited exactly once', body: 'Each on-chain transfer can be credited only once, inside a single database transaction. Balances can never go below zero.' },
 ];
 

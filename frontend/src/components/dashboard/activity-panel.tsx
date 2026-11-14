@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowDownToLine, ArrowUpFromLine, ExternalLink, Gift, Loader2, Scale, Sprout, Users } from 'lucide-react';
+import { ArrowDownToLine, ArrowUpFromLine, ExternalLink, Gift, Loader2, Scale, Sprout, TrendingUp, Users, Wallet } from 'lucide-react';
 import { AssetDot, Panel } from '@/components/dashboard/panel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,9 @@ import { cn } from '@/lib/utils';
 const TYPE_META: Record<TransactionType, { label: string; icon: typeof Sprout; credit: boolean }> = {
   DEPOSIT: { label: 'Deposit', icon: ArrowDownToLine, credit: true },
   WITHDRAWAL: { label: 'Withdrawal', icon: ArrowUpFromLine, credit: false },
-  YIELD_PAYOUT: { label: 'Yield payout', icon: Sprout, credit: true },
+  INVEST: { label: 'Invested', icon: TrendingUp, credit: false },
+  REDEEM: { label: 'Moved to wallet', icon: Wallet, credit: true },
+  YIELD_PAYOUT: { label: 'Investment return', icon: Sprout, credit: true },
   REFERRAL_BONUS: { label: 'Referral bonus', icon: Gift, credit: true },
   AFFILIATE_YIELD_REWARD: { label: 'Referral yield share', icon: Users, credit: true },
   ADJUSTMENT_CREDIT: { label: 'Account adjustment', icon: Scale, credit: true },
@@ -37,7 +39,9 @@ const STATUS_BADGE: Record<TransactionStatus, { label: string; variant: 'success
 const TABS: { value: string; label: string; type?: TransactionType }[] = [
   { value: 'all', label: 'All' },
   { value: 'deposits', label: 'Deposits', type: 'DEPOSIT' },
-  { value: 'yield', label: 'Yield', type: 'YIELD_PAYOUT' },
+  { value: 'yield', label: 'Returns', type: 'YIELD_PAYOUT' },
+  { value: 'invest', label: 'Invested', type: 'INVEST' },
+  { value: 'redeem', label: 'To wallet', type: 'REDEEM' },
   { value: 'bonus', label: 'Referral bonus', type: 'REFERRAL_BONUS' },
   { value: 'share', label: 'Referral yield', type: 'AFFILIATE_YIELD_REWARD' },
 ];
@@ -75,7 +79,9 @@ function Detail({ t, required }: { t: LedgerTransaction; required: number | unde
     );
   }
   if (t.blockNumber) return <span className="tabular text-mist">Block {Number(t.blockNumber).toLocaleString('en-US')}</span>;
-  if (t.type === 'YIELD_PAYOUT') return <span className="text-mist">Interest credited</span>;
+  if (t.type === 'YIELD_PAYOUT') return <span className="text-mist">Added to your investment</span>;
+  if (t.type === 'INVEST') return <span className="text-mist">Wallet → investment</span>;
+  if (t.type === 'REDEEM') return <span className="text-mist">Investment → wallet</span>;
   if (t.type === 'AFFILIATE_YIELD_REWARD') return <span className="text-mist">Share of a referral’s yield</span>;
   if (t.type === 'REFERRAL_BONUS') return <span className="text-mist">Referral deposit reward</span>;
   if ((t.type === 'ADJUSTMENT_CREDIT' || t.type === 'ADJUSTMENT_DEBIT') && t.note) {

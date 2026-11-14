@@ -26,18 +26,19 @@ const GROUPS: { id: string; title: string; items: { q: string; a: React.ReactNod
     title: 'Deposits and networks',
     items: [
       { q: 'Which coins can I deposit?', a: 'BTC on the Bitcoin network, ETH on Ethereum, and USDT on Ethereum (ERC-20). Other coins on our markets page show “Deposits coming soon”.' },
-      { q: 'How long until my deposit appears?', a: 'It appears as pending when we first see it and is credited after 3 confirmations on Bitcoin (about 30 minutes) or 12 on Ethereum (a few minutes).' },
-      { q: 'I sent USDT on TRON (TRC-20). What now?', a: `TRC-20 deposits are not yet supported, so they will not be credited automatically. Contact ${SUPPORT_EMAIL} with the transaction hash straight away.` },
+      { q: 'How long until my deposit appears?', a: 'After you send, report the transaction from the Deposit button in your dashboard. Our team checks it on the blockchain (3 confirmations on Bitcoin, 12 on Ethereum) and credits it, usually within a few hours. You get an email when it is credited.' },
+      { q: 'I sent USDT on TRON (TRC-20). What now?', a: `TRC-20 deposits are not yet supported, so they cannot be credited. Contact ${SUPPORT_EMAIL} with the transaction hash straight away.` },
       { q: 'Are there deposit fees?', a: 'We do not charge for deposits. The sending network charges its own transaction fee.' },
       { q: 'How do I withdraw?', a: 'In your dashboard, press Withdraw, enter the amount and your external address, and confirm with the code we email you. Our team reviews every withdrawal before releasing it and emails you the transaction link once sent.' },
-      { q: 'Is my deposit address permanent?', a: 'Yes. Each asset has its own dedicated address for your account, which you can reuse for future deposits.' },
+      { q: 'Why do I need to report my deposit?', a: 'Our deposit addresses are shared by clients, so the blockchain alone does not tell us who sent a payment. Reporting the transaction hash lets us match it to your account. Each transaction can only be claimed once.' },
+      { q: 'Is the deposit address always the same?', a: 'Yes, but always copy it from your dashboard before sending, rather than from an old message, and check the first and last characters after pasting.' },
     ],
   },
   {
     id: 'earning',
     title: 'Earning yield',
     items: [
-      { q: 'How do I start earning?', a: <>Deposit, then switch the asset on in your allocation and save. See <Link href="/earn" className="text-brass">Earn</Link> for details.</> },
+      { q: 'How do I start earning?', a: <>Deposit to your wallet, then press Invest and choose an amount (from $50). See <Link href="/earn" className="text-brass">Earn</Link> for details.</> },
       { q: 'Are returns guaranteed?', a: 'No. All rates are variable and may change or be paused at any time.' },
       { q: 'When is yield paid?', a: 'Daily assets at 00:00 UTC, hourly assets on the hour. Each payout is listed in your activity.' },
       { q: 'Why is my first payout zero?', a: 'Yield is paid on balances held for the whole period. A deposit made during a period starts earning in the next one.' },

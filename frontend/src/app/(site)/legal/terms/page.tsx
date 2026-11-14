@@ -39,14 +39,14 @@ export default function TermsPage() {
       </ul>
       <h2 id="deposits">4. Deposits</h2>
       <ul>
-        <li>Each supported asset has a dedicated deposit address shown in your dashboard, together with the network it must be sent on.</li>
-        <li>Deposits are credited after the number of network confirmations shown on the deposit screen.</li>
+        <li>Each supported asset has a deposit address shown in your dashboard, together with the network it must be sent on. Deposit addresses may be shared by several clients; you must report each deposit with its transaction hash so it can be matched to your account. Unreported deposits to a shared address cannot be credited until you provide proof of the transaction.</li>
+        <li>Deposits are credited after our team has confirmed the transaction on the blockchain with sufficient network confirmations. We credit the amount actually received at our address.</li>
         <li>Assets sent on an unsupported network, to the wrong address, or without a required memo or tag may not be recoverable. We will try to help, but cannot guarantee recovery.</li>
         <li>We hold deposited assets on your behalf. Your balance in the dashboard is our record of what we owe you.</li>
       </ul>
       <h2 id="yield">5. Earn and yield</h2>
       <ul>
-        <li>Assets you switch on in your allocation earn yield at the rate published on our <Link href="/earn">Earn page</Link> at the time of each payout.</li>
+        <li>Funds you move into your investment earn a return at the rate published on our <Link href="/earn">Earn page</Link> at the time of each payout.</li>
         <li>Rates are variable. We may change, pause or withdraw a rate at any time. Yield is not guaranteed.</li>
         <li>Yield is calculated on balances held for a full payout period, rounded down to the asset’s smallest unit, and credited in the same asset.</li>
         <li>Calculators and projections on our website are illustrations only.</li>

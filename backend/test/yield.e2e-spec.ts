@@ -36,6 +36,10 @@ describe('Portfolio allocations, admin yields & payout engine (e2e)', () => {
   const setBalance = (name: string, asset: 'USDT' | 'ETH' | 'BTC', amount: string) =>
     prisma.balance.update({ where: { userId_assetType: { userId: users[name].id, assetType: asset } }, data: { balance: amount } });
 
+  /** Funds in the client's investment (the only funds that earn). */
+  const setInvested = (name: string, asset: 'USDT' | 'ETH' | 'BTC', amount: string) =>
+    prisma.balance.update({ where: { userId_assetType: { userId: users[name].id, assetType: asset } }, data: { investedBalance: amount } });
+
   const balanceOf = async (userId: string, asset: 'USDT' | 'ETH' | 'BTC') =>
     prisma.balance.findUniqueOrThrow({ where: { userId_assetType: { userId, assetType: asset } } });
 
@@ -153,23 +157,23 @@ describe('Portfolio allocations, admin yields & payout engine (e2e)', () => {
 
     it('is admin-only', async () => {
       await http().get('/api/admin/yields').set(auth('alice')).expect(403);
-      await put('USDT', { apyPercent: 5, interval: 'DAILY' }, 'alice').expect(403);
+      await put('USDT', { apyPercent: '5', interval: 'DAILY' }, 'alice').expect(403);
       await http().get('/api/admin/yields').expect(401);
     });
 
     it('validates rate changes', async () => {
-      expect((await put('USDT', { apyPercent: 30, interval: 'DAILY' }).expect(400)).body.message).toMatch(/ceiling of 25%/);
-      await put('USDT', { apyPercent: -1, interval: 'DAILY' }).expect(400);
-      await put('USDT', { apyPercent: 5, interval: 'WEEKLY' }).expect(400);
-      await put('USDT', { apyPercent: 5.12345, interval: 'DAILY' }).expect(400);
-      await put('DOGE', { apyPercent: 5, interval: 'DAILY' }).expect(400);
+      expect((await put('USDT', { apyPercent: '30', interval: 'DAILY' }).expect(400)).body.message).toMatch(/highest rate allowed is .*% a week \(25% a year\)/);
+      await put('USDT', { apyPercent: '-1', interval: 'DAILY' }).expect(400);
+      await put('USDT', { apyPercent: '5', interval: 'WEEKLY' }).expect(400);
+      await put('USDT', { apyPercent: '5.12345', interval: 'DAILY' }).expect(400);
+      await put('DOGE', { apyPercent: '5', interval: 'DAILY' }).expect(400);
     });
 
     it('sets the rate matrix as versioned history', async () => {
-      await put('USDT', { apyPercent: 4, interval: 'daily', note: 'initial' }).expect(200);
-      await put('USDT', { apyPercent: 5, interval: 'DAILY', note: 'raised after lending desk review' }).expect(200);
-      await put('BTC', { apyPercent: 3.5, interval: 'DAILY' }).expect(200);
-      const res = await put('ETH', { apyPercent: 4, interval: 'HOURLY' }).expect(200);
+      await put('USDT', { apyPercent: '4', interval: 'daily', note: 'initial' }).expect(200);
+      await put('USDT', { apyPercent: '5', interval: 'DAILY', note: 'raised after lending desk review' }).expect(200);
+      await put('BTC', { apyPercent: '3.5', interval: 'DAILY' }).expect(200);
+      const res = await put('ETH', { apyPercent: '4', interval: 'HOURLY' }).expect(200);
 
       const byAsset = Object.fromEntries(res.body.map((r: { asset: string }) => [r.asset, r]));
       expect(byAsset.USDT).toMatchObject({ apyPercent: '5', interval: 'DAILY', isActive: true, updatedBy: users.admin.id });
@@ -189,16 +193,20 @@ describe('Portfolio allocations, admin yields & payout engine (e2e)', () => {
     const bulkIds: string[] = [];
 
     beforeAll(async () => {
-      // Holdings held through the whole period.
-      await setBalance('alice', 'USDT', '11000');
-      await setBalance('alice', 'BTC', '0.5');
-      await setBalance('alice', 'ETH', '1'); // ETH not allocated → earns nothing
-      await setBalance('bob', 'ETH', '3');
-      await setBalance('carol', 'USDT', '5000'); // no allocation → earns nothing
-      await setBalance('dave', 'USDT', '2000');
-      // 1,000 of alice's USDT arrived after the period started → excluded from principal.
+      // Investments held through the whole period.
+      await setInvested('alice', 'USDT', '11000');
+      await setInvested('alice', 'BTC', '0.5');
+      await setBalance('alice', 'ETH', '1'); // ETH left in the wallet → earns nothing
+      await setInvested('bob', 'ETH', '3');
+      await setBalance('carol', 'USDT', '5000'); // wallet only → earns nothing
+      await setInvested('dave', 'USDT', '2000');
+      // 1,000 of alice's USDT was invested after the period started → excluded from principal.
       await prisma.transaction.create({
-        data: { userId: users.alice.id, type: 'DEPOSIT', assetType: 'USDT', amount: '1000', status: 'COMPLETED', confirmedAt: new Date() },
+        data: { userId: users.alice.id, type: 'INVEST', assetType: 'USDT', amount: '1000', status: 'COMPLETED', confirmedAt: new Date() },
+      });
+      // A fresh deposit to the wallet doesn't change what the investment earns.
+      await prisma.transaction.create({
+        data: { userId: users.dave.id, type: 'DEPOSIT', assetType: 'USDT', amount: '500', status: 'COMPLETED', confirmedAt: new Date() },
       });
 
       // Bulk holders referred by `ref`, spread over several 10-row chunks.
@@ -208,8 +216,7 @@ describe('Portfolio allocations, admin yields & payout engine (e2e)', () => {
           data: {
             email: `bulk${i}@${DOMAIN}`, passwordHash: 'x', isVerified: true, referralCode: `B${RUN}${i}`.slice(0, 32).toUpperCase(),
             referredByUserId: ref.id,
-            balances: { create: { assetType: 'USDT', balance: `${100 + i}.5` } },
-            dynamicAllocations: { create: { assetType: 'USDT', allocationPercentage: '100' } },
+            balances: { create: { assetType: 'USDT', investedBalance: `${100 + i}.5` } },
           },
         });
         bulkIds.push(u.id);
@@ -247,15 +254,16 @@ describe('Portfolio allocations, admin yields & payout engine (e2e)', () => {
       expect(find('alice', 'USDT')!.amount.toString()).toBe(aliceUsdtYield.toString());
       expect(find('alice', 'BTC')!.amount.toString()).toBe(aliceBtcYield.toString());
       expect(find('dave', 'USDT')!.amount.toString()).toBe(daveYield.toString());
-      expect(find('alice', 'ETH')).toBeUndefined(); // not allocated
+      expect(find('alice', 'ETH')).toBeUndefined(); // wallet only
       expect(find('bob', 'ETH')).toBeUndefined(); // ETH pays HOURLY
-      expect(find('carol', 'USDT')).toBeUndefined(); // no allocation
+      expect(find('carol', 'USDT')).toBeUndefined(); // wallet only
       expect((find('alice', 'USDT')!.metadata as { principal: string }).principal).toBe('10000.000000000000000000');
 
-      // Balances: alice = 11000 + own yield + 5% of dave's yield; yield tracked separately.
+      // Own yield compounds in the investment; the affiliate reward (5% of dave's yield) goes to the wallet.
       const daveAffiliate = trunc(daveYield.mul('0.05'), 6);
       const aliceUsdt = await balanceOf(users.alice.id, 'USDT');
-      expect(aliceUsdt.balance.toString()).toBe(new D(11000).plus(aliceUsdtYield).plus(daveAffiliate).toString());
+      expect(aliceUsdt.investedBalance.toString()).toBe(new D(11000).plus(aliceUsdtYield).toString());
+      expect(aliceUsdt.balance.toString()).toBe(daveAffiliate.toString());
       expect(aliceUsdt.flexibleYieldEarned.toString()).toBe(aliceUsdtYield.toString());
 
       // Affiliate rewards: direct referrer only, same asset, linked to the source payout.
@@ -291,10 +299,10 @@ describe('Portfolio allocations, admin yields & payout engine (e2e)', () => {
     });
 
     it('does not pay the same period twice', async () => {
-      const before = (await balanceOf(users.alice.id, 'USDT')).balance.toString();
+      const before = (await balanceOf(users.alice.id, 'USDT')).investedBalance.toString();
       const res = await http().post('/api/admin/yields/runs').set(auth('admin')).send({ interval: 'DAILY' }).expect(200);
       expect(res.body.status).toBe('already_completed');
-      expect((await balanceOf(users.alice.id, 'USDT')).balance.toString()).toBe(before);
+      expect((await balanceOf(users.alice.id, 'USDT')).investedBalance.toString()).toBe(before);
     });
 
     it('pays HOURLY assets on the hourly run', async () => {
@@ -302,7 +310,7 @@ describe('Portfolio allocations, admin yields & payout engine (e2e)', () => {
       expect(res.body.status).toBe('completed');
       const expected = new D(3).mul(periodRate(4, 'HOURLY')).toDecimalPlaces(18, D.ROUND_DOWN);
       const bob = await balanceOf(users.bob.id, 'ETH');
-      expect(bob.balance.toString()).toBe(new D(3).plus(expected).toString());
+      expect(bob.investedBalance.toString()).toBe(new D(3).plus(expected).toString());
       expect(bob.flexibleYieldEarned.toString()).toBe(expected.toString());
       expect(await prisma.transaction.count({ where: { type: 'AFFILIATE_YIELD_REWARD', sourceTransaction: { userId: users.bob.id } } })).toBe(0);
     });
@@ -310,11 +318,11 @@ describe('Portfolio allocations, admin yields & payout engine (e2e)', () => {
     it('resumes a crashed run without double-paying', async () => {
       const key = latestCompletedPeriod('HOURLY').key;
       await prisma.yieldRun.update({ where: { periodKey: key }, data: { status: 'FAILED', error: 'simulated crash' } });
-      const before = (await balanceOf(users.bob.id, 'ETH')).balance.toString();
+      const before = (await balanceOf(users.bob.id, 'ETH')).investedBalance.toString();
       const res = await http().post('/api/admin/yields/runs').set(auth('admin')).send({ interval: 'HOURLY' }).expect(200);
       expect(res.body.status).toBe('completed');
       expect(res.body.run.error).toBeNull();
-      expect((await balanceOf(users.bob.id, 'ETH')).balance.toString()).toBe(before);
+      expect((await balanceOf(users.bob.id, 'ETH')).investedBalance.toString()).toBe(before);
       const run = await prisma.yieldRun.findUniqueOrThrow({ where: { periodKey: key } });
       expect(await prisma.transaction.count({ where: { yieldRunId: run.id, userId: users.bob.id } })).toBe(1);
     });

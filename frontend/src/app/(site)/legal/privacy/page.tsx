@@ -29,7 +29,7 @@ export default function PrivacyPage() {
       <h2 id="collect">2. What we collect</h2>
       <ul>
         <li><strong>Account details:</strong> your email address and a one-way hash of your password (we never store the password itself).</li>
-        <li><strong>Account activity:</strong> sign-in times, your allocation choices, balances and transactions, including deposit addresses and blockchain transaction IDs.</li>
+        <li><strong>Account activity:</strong> sign-in times, your investment choices, balances and transactions, including deposit addresses and blockchain transaction IDs.</li>
         <li><strong>Referral data:</strong> who referred you and whom you referred, and the rewards paid.</li>
         <li><strong>Support messages:</strong> what you send us through live chat or email.</li>
         <li><strong>Technical data:</strong> basic request information such as IP address, used for security and, for staff actions, our audit log.</li>

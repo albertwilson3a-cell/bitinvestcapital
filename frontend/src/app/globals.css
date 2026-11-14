@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* The product is dark-only; tokens follow shadcn/ui naming so generated components drop in. */
+/* Dark is the default theme; html.light swaps the palette. Tokens follow shadcn/ui naming. */
 :root {
   --radius: 0.5rem;
 
@@ -39,8 +39,37 @@
   --border: var(--rule);
   --input: var(--rule-strong);
   --ring: var(--brass);
+  --footer: #080f1b;
+  --overlay: rgb(0 0 0 / 0.7);
 
   color-scheme: dark;
+}
+
+/* Light theme: same structure, paper-white surfaces, darker accents for contrast on white. */
+html.light {
+  --ink: #f5f6f9;
+  --vault: #ffffff;
+  --vault-raised: #ffffff;
+  --rule: #e2e6ee;
+  --rule-strong: #c9d1de;
+  --parchment: #111a2b;
+  --mist: #5a6577;
+  --brass: #94712f;
+  --brass-dim: #b8985c;
+
+  --asset-btc: #c7841f;
+  --asset-eth: #5867e0;
+  --asset-usdt: #1f9a82;
+  --up: #12875a;
+  --down: #c93f33;
+
+  --primary-foreground: #ffffff;
+  --muted: #eef1f6;
+  --accent: #eef1f6;
+  --footer: #eceff5;
+  --overlay: rgb(15 23 42 / 0.45);
+
+  color-scheme: light;
 }
 
 @theme inline {
@@ -114,6 +143,8 @@
   }
   body {
     @apply bg-background text-foreground font-sans antialiased;
+    /* Safety net on phones: decorative glows never cause sideways scrolling. */
+    overflow-x: clip;
     font-feature-settings: "ss02" 1;
     font-size: 15px;
     line-height: 1.55;

@@ -6,6 +6,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 export const SETTING_KEYS = {
   referralDepositRewardRate: 'referral.deposit_reward_rate',
   affiliateYieldRewardRate: 'referral.affiliate_yield_rate',
+  minInvestmentUsd: 'investment.min_usd',
 } as const;
 export type SettingName = keyof typeof SETTING_KEYS;
 
@@ -29,6 +30,12 @@ const SPECS: Record<SettingName, SettingSpec> = {
     envDefault: '0.05',
     max: '0.5',
     description: 'Share of each yield payout paid to the earner’s direct referrer, in the same asset.',
+  },
+  minInvestmentUsd: {
+    envKey: 'MIN_INVESTMENT_USD',
+    envDefault: '50',
+    max: '100000',
+    description: 'Smallest amount, in US dollars, a client can move into an investment at once.',
   },
 };
 

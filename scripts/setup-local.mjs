@@ -8,14 +8,15 @@
  *   frontend/.env.local   → used by the website
  *
  * Run from the project folder:   node scripts/setup-local.mjs
- * Existing files are kept unless you add --force (old copies are backed up).
+ * Existing files are kept; settings added in newer versions are appended to them.
+ * Add --force to start over (old copies are backed up).
  *
- * LOCAL TESTING ONLY: emails are printed to the backend console and the wallet
- * keys below are throwaway watch-only test keys. Prices are live from CoinGecko.
- * Never send real crypto to addresses shown in a local copy.
+ * Emails are printed to the backend console until Gmail SMTP is filled in.
+ * Deposits go to the shared BitInvest Capital addresses below (real wallets):
+ * only send real crypto there if you mean to. Prices are live from CoinGecko.
  */
 import { randomBytes } from 'node:crypto';
-import { copyFileSync, existsSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -28,6 +29,11 @@ const redisPassword = secret(16);
 const jwtSecret = secret(32);
 const webhookSecret = `whsec_${secret(24)}`;
 const pgPort = 5432;
+
+// BitInvest Capital's shared deposit addresses (the owner's own wallets).
+const DEPOSIT_BTC = 'bc1q84ma6k9jpmtj7m94fxy5jhufcp0hr68fqx9xvf';
+const DEPOSIT_ETH = '0x86EF1E2Fb0454218d3eADe4aBCfD359F24B8068e';
+const DEPOSIT_USDT = '0x86EF1E2Fb0454218d3eADe4aBCfD359F24B8068e';
 
 // Throwaway watch-only keys for local testing (no one holds the private keys).
 const ETH_XPUB = 'xpub6DCoCpSuQZB2jawqnGMEPS63ePKWkwWPH4TU45Q7LPXWuNd8TMtVxRrgjtEshuqpK3mdhaWHPFsBngh5GFZaM6si3yZdUsT8ddYM3PwnATt';
@@ -102,6 +108,16 @@ BTC_ACCOUNT_PATH=m/84'/0'/0'
 BTC_NETWORK=mainnet
 USDT_CONTRACT_ADDRESS=${USDT}
 
+# Shared deposit addresses: every client is shown these and reports the
+# transaction hash after sending; an admin confirms before crediting.
+# Remove a line to go back to a personal address per client (from the xpub above).
+DEPOSIT_ADDRESS_BTC=${DEPOSIT_BTC}
+DEPOSIT_ADDRESS_ETH=${DEPOSIT_ETH}
+DEPOSIT_ADDRESS_USDT=${DEPOSIT_USDT}
+# Used by the admin "Check on blockchain" button (public services, no key needed).
+ETH_RPC_URL=https://ethereum-rpc.publicnode.com
+BTC_ESPLORA_URL=https://mempool.space/api
+
 WEBHOOK_SIGNING_SECRETS=${webhookSecret}
 WEBHOOK_TOLERANCE_SECONDS=300
 MIN_CONFIRMATIONS_BTC=3
@@ -133,7 +149,25 @@ NEXT_PUBLIC_BTC_EXPLORER_TX=https://mempool.space/tx
 
 const existing = Object.keys(files).filter((f) => existsSync(join(root, f)));
 if (existing.length && !force) {
-  console.log(`Already set up (${existing.join(', ')} exist). Nothing changed.`);
+  // Update mode: keep every existing value (passwords, Gmail settings…) and
+  // only add settings introduced by newer versions.
+  let added = 0;
+  for (const name of existing) {
+    const path = join(root, name);
+    const current = readFileSync(path, 'utf8');
+    const have = new Set(current.split(/\r?\n/).map((l) => l.match(/^\s*([A-Z0-9_]+)\s*=/)?.[1]).filter(Boolean));
+    const missing = files[name].split('\n').filter((l) => {
+      const key = l.match(/^([A-Z0-9_]+)=/)?.[1];
+      return key && !have.has(key);
+    });
+    if (!missing.length) continue;
+    const eol = current.includes('\r\n') ? '\r\n' : '\n';
+    const sep = current.endsWith('\n') ? '' : eol;
+    appendFileSync(path, `${sep}${eol}# Added by setup-local (${new Date().toISOString().slice(0, 10)})${eol}${missing.join(eol)}${eol}`);
+    console.log(`  ${name}: added ${missing.map((l) => l.split('=')[0]).join(', ')}`);
+    added += missing.length;
+  }
+  console.log(added ? '\nUpdated. Your existing settings were kept.' : `Already up to date (${existing.join(', ')}). Nothing changed.`);
   console.log('To start over with new passwords: node scripts/setup-local.mjs --force');
   console.log('(If you do, also run "docker compose down -v" so the database uses the new password.)');
   process.exit(0);

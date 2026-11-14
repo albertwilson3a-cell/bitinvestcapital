@@ -170,7 +170,7 @@ export const ARTICLES: Article[] = [
         </ul>
         <h2 id="confirmations">Confirmations and waiting times</h2>
         <p>
-          A deposit appears as <em>pending</em> as soon as we see it, and is credited once it has enough confirmations to be considered final. We
+          After you report a deposit it shows as <em>being checked</em>, and is credited once it has enough confirmations to be considered final. We
           require 3 confirmations on Bitcoin (around 30 minutes) and 12 on Ethereum (a few minutes). If a transfer is taking longer, check its
           status in a block explorer using the transaction hash; your activity list links to one for every deposit.
         </p>
@@ -287,7 +287,7 @@ export const ARTICLES: Article[] = [
         <h2 id="how-we-calculate">How BitInvest Capital calculates yield</h2>
         <ul>
           <li>Each asset has a published rate, paid either daily (at 00:00 UTC) or hourly (on the hour).</li>
-          <li>Only assets you have switched on in your allocation earn yield.</li>
+          <li>Only funds you have moved into your investment earn; your wallet balance does not.</li>
           <li>
             Yield is paid on the balance you held for the whole period. Money that arrives part-way through a period starts earning from the next
             one. This keeps the calculation fair for everyone.
@@ -410,8 +410,8 @@ export const ARTICLES: Article[] = [
         <h2 id="diversify">Diversify across assets</h2>
         <p>
           Different assets carry different risks. Stablecoins aim to hold their value but depend on their issuer; bitcoin has the longest track
-          record; smaller networks can grow faster or fail entirely. Your allocation on BitInvest Capital lets you decide how your portfolio is split
-          and which assets earn yield.
+          record; smaller networks can grow faster or fail entirely. On BitInvest Capital you decide how much of each coin to invest
+          and how much to keep in your wallet.
         </p>
         <h2 id="regular-buying">Buying regularly</h2>
         <p>
@@ -493,7 +493,7 @@ export const ARTICLES: Article[] = [
         </p>
         <h2 id="holding">Holding bitcoin with BitInvest Capital</h2>
         <p>
-          You can deposit BTC to your own dedicated address, include it in your allocation and earn variable yield paid in bitcoin. Read{' '}
+          You can deposit BTC from your dashboard, invest it and earn a variable return paid in bitcoin. Read{' '}
           <Link href="/buy/btc">how to buy Bitcoin</Link> for a step-by-step guide, and see <Link href="/earn/btc">BTC Earn</Link> for the current rate.
         </p>
       </>
@@ -707,7 +707,7 @@ export const GLOSSARY: { term: string; def: string }[] = [
   { term: 'Transaction hash (TXID)', def: 'The unique ID of a blockchain transaction, used to look it up in a block explorer.' },
   { term: 'Validator', def: 'A participant that produces and checks blocks on a proof-of-stake network.' },
   { term: 'Address', def: 'A public identifier you share to receive crypto on a specific network, similar to an account number.' },
-  { term: 'Allocation', def: 'How you split your portfolio between assets, and which assets you have switched on to earn yield.' },
+  { term: 'Investment', def: 'The part of your balance you have chosen to put to work. It earns the weekly rate; your wallet balance does not.' },
   { term: 'APY', def: 'Annual percentage yield: the yearly return including compounding.' },
   { term: 'Block explorer', def: 'A website that shows every transaction and block on a public blockchain.' },
   { term: 'Bridge', def: 'A service that moves tokens from one blockchain to another.' },

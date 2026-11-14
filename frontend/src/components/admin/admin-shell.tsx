@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ArrowLeftRight, ArrowUpFromLine, ClipboardCheck, LayoutGrid, LogOut, MessageCircle, ScrollText, ShieldAlert, SlidersHorizontal, Users } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, ClipboardCheck, LayoutGrid, LogOut, MessageCircle, ScrollText, ShieldAlert, SlidersHorizontal, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Wordmark } from '@/components/wordmark';
@@ -10,12 +10,15 @@ import { useAdjustments } from '@/hooks/use-admin';
 import { useMe } from '@/hooks/use-dashboard';
 import { useStaffUnread } from '@/hooks/use-support';
 import { useWithdrawalCounts } from '@/hooks/use-admin-withdrawals';
+import { useDepositCounts } from '@/hooks/use-deposits';
+import { ThemeQuickSwitch, ThemeToggle } from '@/components/theme-toggle';
 import { session } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 const NAV = [
   { href: '/admin', label: 'Overview', icon: LayoutGrid },
   { href: '/admin/users', label: 'Users', icon: Users },
+  { href: '/admin/deposits', label: 'Deposits', icon: ArrowDownToLine, badge: 'deposits' as const },
   { href: '/admin/withdrawals', label: 'Withdrawals', icon: ArrowUpFromLine, badge: 'withdrawals' as const },
   { href: '/admin/adjustments', label: 'Adjustments', icon: ClipboardCheck, badge: 'pending' as const },
   { href: '/admin/support', label: 'Live chat', icon: MessageCircle, badge: 'chat' as const },
@@ -40,6 +43,16 @@ function WithdrawalBadge() {
   if (!n) return null;
   return (
     <span className="ml-auto rounded-sm bg-brass/15 px-1.5 text-[11px] font-semibold text-brass tabular" aria-label={`${n} withdrawals need action`}>
+      {n}
+    </span>
+  );
+}
+
+function DepositBadge() {
+  const n = useDepositCounts().data?.pendingReview ?? 0;
+  if (!n) return null;
+  return (
+    <span className="ml-auto rounded-sm bg-brass/15 px-1.5 text-[11px] font-semibold text-brass tabular" aria-label={`${n} deposits to check`}>
       {n}
     </span>
   );
@@ -78,6 +91,7 @@ function NavLinks({ orientation }: { orientation: 'vertical' | 'horizontal' }) {
             {label}
             {badge === 'pending' && <PendingBadge />}
             {badge === 'chat' && <ChatBadge />}
+            {badge === 'deposits' && <DepositBadge />}
             {badge === 'withdrawals' && <WithdrawalBadge />}
           </Link>
         );
@@ -149,15 +163,17 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <LogOut className="size-4" /> Sign out
             </button>
           </div>
+          <ThemeToggle compact className="mt-3 ml-3" />
         </div>
       </aside>
 
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-30 border-b border-rule bg-ink/90 backdrop-blur-md lg:hidden">
           <div className="flex h-14 items-center gap-3 px-4 sm:px-6">
-            <Wordmark href="/admin" />
+            <Wordmark href="/admin" compact />
             <span className="text-[12px] text-brass">Admin</span>
-            <Button variant="ghost" size="icon-sm" className="ml-auto" onClick={signOut} aria-label="Sign out">
+            <ThemeQuickSwitch className="ml-auto" />
+            <Button variant="ghost" size="icon-sm" onClick={signOut} aria-label="Sign out">
               <LogOut />
             </Button>
           </div>

@@ -34,7 +34,7 @@ const ASSETS: Record<string, { example: number; unit: string; why: string[]; ris
     risk: 'Your yield is paid in BTC, so its dollar value rises and falls with the bitcoin price. A small yield does not protect you from a large price fall.',
     faq: [
       { q: 'Is BTC yield paid in bitcoin?', a: 'Yes. Payouts are in BTC, rounded down to the nearest satoshi.' },
-      { q: 'Does earning lock my bitcoin?', a: 'No. You can switch BTC off in your allocation at any time; it stops earning from the next period.' },
+      { q: 'Does earning lock my bitcoin?', a: 'No. You can move your BTC from the investment back to your wallet at any time and withdraw it from there.' },
     ],
   },
   eth: {
@@ -42,7 +42,7 @@ const ASSETS: Record<string, { example: number; unit: string; why: string[]; ris
     unit: 'ETH',
     why: [
       'Ether is the fuel of the largest smart-contract ecosystem. Earning on ETH grows the amount of ether you hold, with yield paid in ETH.',
-      'You don’t need to run a validator or manage staking yourself: switch ETH on in your allocation and payouts arrive automatically.',
+      'You don’t need to run a validator or manage staking yourself: invest ETH from your dashboard and payouts are added automatically.',
     ],
     risk: 'Your yield is paid in ETH, so its dollar value moves with the ether price, which can be very volatile.',
     faq: [
@@ -73,7 +73,7 @@ export default async function EarnAssetPage({ params }: PageProps<'/earn/[asset]
       <PageHero
         eyebrow={`${c.symbol} Earn`}
         title={<span className="flex items-center gap-4"><CoinMark symbol={c.symbol} size="lg" /> Earn on {c.name}.</span>}
-        intro={`Switch on ${c.symbol} in your allocation and yield is credited to your balance automatically, compounding as it goes.`}
+        intro={`Invest ${c.symbol} from your dashboard (from $50) and returns are added to your investment automatically, compounding as it goes.`}
         aside={<AssetRate asset={c.symbol} />}
       />
       <Section eyebrow="Calculator" title={`See how ${c.symbol} could grow.`}>
@@ -100,8 +100,8 @@ export default async function EarnAssetPage({ params }: PageProps<'/earn/[asset]
         <Steps
           steps={[
             { title: 'Open an account', body: 'Sign up and confirm your email.' },
-            { title: `Deposit ${c.symbol}`, body: <>Follow <Link href={`/buy/${asset}`} className="text-brass">how to buy {c.name}</Link> and send to your dedicated address.</> },
-            { title: 'Switch it on', body: `Include ${c.symbol} in your allocation and save.` },
+            { title: `Deposit ${c.symbol}`, body: <>Follow <Link href={`/buy/${asset}`} className="text-brass">how to buy {c.name}</Link> then send it to the deposit address in your dashboard and report the transaction.</> },
+            { title: 'Invest it', body: `Press Invest and choose how much ${c.symbol} to put to work, from $50.` },
             { title: 'Get paid', body: 'Payouts arrive automatically from the next full period.' },
           ]}
         />

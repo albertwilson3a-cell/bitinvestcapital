@@ -11,6 +11,8 @@ import { PaymentsModule } from './payments/payments.module.js';
 import { MarketModule } from './market/market.module.js';
 import { SupportModule } from './support/support.module.js';
 import { WithdrawalsModule } from './withdrawals/withdrawals.module.js';
+import { DepositsModule } from './deposits/deposits.module.js';
+import { InvestmentsModule } from './investments/investments.module.js';
 import { PortfolioModule } from './portfolio/portfolio.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { RedisModule } from './redis/redis.module.js';
@@ -40,6 +42,8 @@ import { YieldModule } from './yield/yield.module.js';
     MarketModule,
     SupportModule,
     WithdrawalsModule,
+    DepositsModule,
+    InvestmentsModule,
     PortfolioModule,
     YieldModule,
     AdminModule,

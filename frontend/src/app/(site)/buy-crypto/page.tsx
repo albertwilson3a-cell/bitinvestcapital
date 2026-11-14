@@ -17,7 +17,7 @@ const BUY_FAQ = [
   { q: 'Can I buy crypto directly on BitInvest Capital?', a: 'Not with a card or bank transfer yet. You buy crypto from an exchange, broker or peer-to-peer marketplace, then send it to your dedicated BitInvest Capital deposit address.' },
   { q: 'Which coin should I send?', a: 'Any coin with “Deposits open”: currently BTC, ETH and USDT (ERC-20). Many people send USDT if they want a stable dollar balance.' },
   { q: 'What is the minimum deposit?', a: 'There is no minimum on our side. Very small deposits may not be worth the network fee charged by the sending wallet.' },
-  { q: 'How long does it take?', a: 'Buying takes minutes on most exchanges. Deposits are credited after 3 confirmations on Bitcoin (about 30 minutes) or 12 on Ethereum (a few minutes).' },
+  { q: 'How long does it take?', a: 'Buying takes minutes on most exchanges. After you report your deposit, we credit it once it is confirmed on the blockchain and checked by our team, usually within a few hours.' },
   { q: 'Do I need my own wallet?', a: 'No. You can send straight from the exchange where you bought, as long as you choose the network shown on your deposit screen.' },
 ];
 
@@ -35,7 +35,7 @@ export default function BuyCryptoPage() {
             { title: 'Open your account', body: 'Sign up with your email and confirm it. Your deposit addresses are ready as soon as you log in.' },
             { title: 'Buy crypto', body: 'Buy BTC, ETH or USDT from an exchange or marketplace in your country, paying with your local currency.' },
             { title: 'Send it to us', body: 'Copy your deposit address from your dashboard and withdraw to it, choosing the network shown on the deposit screen.' },
-            { title: 'Switch on earning', body: 'Once credited, include the asset in your allocation to start earning variable yield.' },
+            { title: 'Invest', body: 'Once credited to your wallet, invest any amount from $50 to start earning.' },
           ]}
         />
       </Section>

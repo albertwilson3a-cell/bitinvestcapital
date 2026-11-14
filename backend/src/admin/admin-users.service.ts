@@ -3,7 +3,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { ListUsersQueryDto } from './dto/admin.dto.js';
 
-const balanceSelect = { assetType: true, balance: true, lockedBalance: true, flexibleYieldEarned: true } as const;
+const balanceSelect = { assetType: true, balance: true, lockedBalance: true, investedBalance: true, flexibleYieldEarned: true } as const;
 
 @Injectable()
 export class AdminUsersService {

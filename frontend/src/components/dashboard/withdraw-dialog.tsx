@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Segmented } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useConfirmWithdrawal, useRequestWithdrawal, useResendWithdrawalCode, useWithdrawalOptions, type WithdrawalChallenge } from '@/hooks/use-withdrawals';
+import { useInvestments } from '@/hooks/use-investments';
 import { ApiError } from '@/lib/api';
 import { ASSET_META, ASSETS, type Asset } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -40,6 +41,7 @@ export function WithdrawDialog({ asset: initialAsset, trigger }: { asset?: Asset
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string[]>([]);
   const options = useWithdrawalOptions(open);
+  const investments = useInvestments();
   const request = useRequestWithdrawal();
   const confirm = useConfirmWithdrawal();
   const resend = useResendWithdrawalCode();
@@ -49,6 +51,7 @@ export function WithdrawDialog({ asset: initialAsset, trigger }: { asset?: Asset
   const fee = Number(opt?.fee ?? 0);
   const receive = n > fee ? n - fee : 0;
   const tooMuch = opt ? n > Number(opt.available) : false;
+  const investedHere = Number(investments.data?.assets.find((x) => x.asset === asset)?.invested ?? 0);
 
   function reset() {
     setAmount('');
@@ -165,6 +168,12 @@ export function WithdrawDialog({ asset: initialAsset, trigger }: { asset?: Asset
                         </button>
                       </div>
                       <Input id="wd-amount" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value.replace(/[^\d.]/g, ''))} className="tabular h-11 text-[16px]" aria-invalid={tooMuch} />
+                      <p className="text-[12px] text-mist">Withdrawals come from your BitInvest wallet.</p>
+                      {investedHere > 0 && (
+                        <FormNotice tone="info">
+                          You also have {trimZeros(String(investedHere))} {asset} invested. To withdraw it, first use “Move to wallet” on your dashboard.
+                        </FormNotice>
+                      )}
                     </div>
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="wd-address">{NETWORK_LABEL(asset)} address</Label>

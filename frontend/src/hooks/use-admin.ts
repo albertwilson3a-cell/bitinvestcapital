@@ -118,10 +118,15 @@ export function useYieldRateHistory() {
 
 export function useSetYieldRate() {
   const invalidate = useInvalidateAdmin();
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ asset, ...body }: { asset: Asset; apyPercent: number; interval: 'HOURLY' | 'DAILY'; isActive: boolean; note?: string }) =>
+    mutationFn: ({ asset, ...body }: { asset: Asset; weeklyPercent: number; interval: 'HOURLY' | 'DAILY'; isActive: boolean; note?: string }) =>
       api<YieldOverview['rates']>(`admin/yields/${asset}`, { method: 'PUT', body: JSON.stringify(body) }),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      invalidate();
+      // The public site and client portal pick up the new rate straight away in this browser.
+      void qc.invalidateQueries({ queryKey: ['public-rates'] });
+    },
   });
 }
 

@@ -118,7 +118,7 @@ export default function MarketsPage() {
         <FaqList items={MARKETS_FAQ} />
       </Section>
 
-      <CtaBand title="Follow the market from your own dashboard." body="Your account comes with the same live charts for every coin, alongside your balances, allocation and returns." />
+      <CtaBand title="Follow the market from your own dashboard." body="Your account comes with the same live charts for every coin, alongside your investment, growth charts and returns." />
     </>
   );
 }

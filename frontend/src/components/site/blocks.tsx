@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { APP_NAME, SITE_HOST, SITE_URL, SUPPORT_EMAIL } from '@/lib/brand';
 import { AuthButton } from '@/components/site/auth-aware';
 import { FOOTER_COLUMNS } from '@/lib/site-nav';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { cn } from '@/lib/utils';
 
 /** Page-top banner: eyebrow, serif headline, intro and optional actions / aside. */
@@ -184,7 +185,7 @@ export function Prose({ children, className }: { children: React.ReactNode; clas
 
 export function MarketingFooter() {
   return (
-    <footer className="border-t border-rule bg-[#080f1b]">
+    <footer className="border-t border-rule bg-[var(--footer)]">
       <div className="mx-auto max-w-[1200px] px-4 py-14 sm:px-6">
         <div className="grid grid-cols-2 gap-x-6 gap-y-10 md:grid-cols-3 lg:grid-cols-6">
           <div className="col-span-2 md:col-span-3 lg:col-span-1">
@@ -201,7 +202,10 @@ export function MarketingFooter() {
             <ul className="mt-4 space-y-2.5 text-[13px] text-mist">
               <li>Language: English</li>
               <li>Currency: USD-$</li>
-              <li>Theme: Dark</li>
+              <li>
+                <span className="mb-2 block">Theme</span>
+                <ThemeToggle />
+              </li>
             </ul>
           </div>
           {FOOTER_COLUMNS.map((col) => (

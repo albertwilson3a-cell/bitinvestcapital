@@ -25,6 +25,26 @@ export function periodRate(apyPercent: Prisma.Decimal | string | number, interva
   return apy.plus(1).pow(new D(1).div(PERIODS_PER_YEAR[interval])).minus(1).toDecimalPlaces(24, D.ROUND_DOWN).toFixed();
 }
 
+/** Weeks per year used to convert weekly rates (365 days / 7). */
+const WEEKS_PER_YEAR = new D(365).div(7);
+
+/** APY % equivalent of a weekly rate %: (1 + w)^(365/7) − 1, so 7 daily payouts give exactly w. */
+export function weeklyToApyPercent(weeklyPercent: Prisma.Decimal | string | number): string {
+  const w = new D(weeklyPercent.toString()).div(100);
+  if (w.isZero()) return '0';
+  return w.plus(1).pow(WEEKS_PER_YEAR).minus(1).times(100).toDecimalPlaces(4, D.ROUND_HALF_EVEN).toFixed();
+}
+
+/** Weekly rate % that compounds to an APY %: (1 + APY)^(7/365) − 1. */
+export function apyToWeeklyPercent(apyPercent: Prisma.Decimal | string | number, rounding: 'nearest' | 'down' = 'nearest'): string {
+  const apy = new D(apyPercent.toString()).div(100);
+  if (apy.isZero()) return '0';
+  return apy.plus(1).pow(new D(1).div(WEEKS_PER_YEAR)).minus(1).times(100).toDecimalPlaces(
+    6,
+    rounding === 'down' ? D.ROUND_DOWN : D.ROUND_HALF_EVEN,
+  ).toFixed();
+}
+
 export interface Period {
   start: Date;
   end: Date;

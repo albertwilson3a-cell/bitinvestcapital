@@ -6,8 +6,12 @@ export interface Wallet {
   network: 'ETHEREUM' | 'BITCOIN';
   balance: string;
   lockedBalance: string;
+  /** Funds in the client's investment (earning). `balance` is the BitInvest wallet. */
+  investedBalance?: string;
   flexibleYieldEarned: string;
   depositAddress: string;
+  /** shared: one platform address for everyone; the client reports the transaction hash. */
+  depositMode?: 'shared' | 'dedicated';
   requiredConfirmations: number;
 }
 
@@ -29,6 +33,8 @@ export interface AllocationsResponse {
 }
 
 export type TransactionType =
+  | 'INVEST'
+  | 'REDEEM'
   | 'DEPOSIT'
   | 'WITHDRAWAL'
   | 'YIELD_PAYOUT'

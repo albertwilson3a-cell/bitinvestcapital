@@ -5,6 +5,7 @@ import '@fontsource/ibm-plex-mono/400.css';
 import './globals.css';
 import { Providers } from './providers';
 import { APP_NAME, SITE_URL } from '@/lib/brand';
+import { THEME_BOOT_SCRIPT } from '@/lib/theme';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -17,12 +18,19 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#0a1220',
-  colorScheme: 'dark',
+  colorScheme: 'dark light',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        {/* Applies the saved light/dark choice before first paint (no flash). */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
+      </head>
       <body suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>

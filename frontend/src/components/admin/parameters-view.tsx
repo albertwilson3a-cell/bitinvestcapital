@@ -31,11 +31,18 @@ import { ASSET_META, type Asset } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 type Interval = 'HOURLY' | 'DAILY';
-const PERIODS: Record<Interval, number> = { DAILY: 365, HOURLY: 8760 };
 const PCT = /^\d{1,3}(\.\d{1,4})?$/;
+const WEEKLY = /^\d{1,3}(\.\d{1,6})?$/;
 
-function perPeriod(apy: number, interval: Interval): string {
-  const r = Math.pow(1 + apy / 100, 1 / PERIODS[interval]) - 1;
+/** Same conversions as the server: a weekly rate compounds over 365/7 weeks a year. */
+const WEEKS = 365 / 7;
+const weeklyToApy = (w: number) => (Math.pow(1 + w / 100, WEEKS) - 1) * 100;
+const apyToWeekly = (a: number) => (Math.pow(1 + a / 100, 1 / WEEKS) - 1) * 100;
+const trimPct = (n: number, dp = 4) => `${Number(n.toFixed(dp))}%`;
+
+function perPeriod(weekly: number, interval: Interval): string {
+  const per = interval === 'DAILY' ? 7 : 168;
+  const r = Math.pow(1 + weekly / 100, 1 / per) - 1;
   return `${(r * 100).toFixed(interval === 'DAILY' ? 5 : 6)}% per ${interval === 'DAILY' ? 'day' : 'hour'}`;
 }
 
@@ -100,27 +107,28 @@ function ReviewDialog({
   );
 }
 
-function RateRow({ row, maxApy, lastBy }: { row: YieldRateRow; maxApy: number; lastBy?: string }) {
+function RateRow({ row, maxWeekly, lastBy }: { row: YieldRateRow; maxWeekly: number; lastBy?: string }) {
   const set = useSetYieldRate();
-  const [apy, setApy] = useState(row.apyPercent ?? '0');
+  const currentWeekly = row.weeklyPercent ? String(Number(Number(row.weeklyPercent).toFixed(6))) : row.apyPercent ? String(Number(apyToWeekly(Number(row.apyPercent)).toFixed(6))) : '0';
+  const [weekly, setWeekly] = useState(currentWeekly);
   const [interval, setInterval] = useState<Interval>(row.interval ?? 'DAILY');
-  // A first-time rate starts active: setting an APY should pay it unless explicitly paused.
+  // A first-time rate starts active: setting a rate should pay it unless explicitly paused.
   const [active, setActive] = useState(row.isActive ?? true);
   const [reviewing, setReviewing] = useState(false);
   const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const apyNum = Number(apy);
-  const apyError = !PCT.test(apy) ? 'Up to 4 decimals' : apyNum > maxApy ? `Max ${maxApy}%` : null;
+  const w = Number(weekly);
+  const weeklyError = !WEEKLY.test(weekly) ? 'Up to 6 decimals' : w > maxWeekly ? `Max ${trimPct(maxWeekly)} a week` : null;
   const dirty = row.configured
-    ? apyNum !== Number(row.apyPercent) || interval !== row.interval || active !== row.isActive
-    : apyNum > 0; // a first rate only makes sense with a non-zero APY
+    ? w !== Number(currentWeekly) || interval !== row.interval || active !== row.isActive
+    : w > 0; // a first rate only makes sense when it pays something
 
   async function confirm() {
     setError(null);
     try {
-      await set.mutateAsync({ asset: row.asset, apyPercent: apyNum, interval, isActive: active, note: note.trim() || undefined });
-      toast.success(`${row.asset} interest updated`, { description: `${apyNum}% APY, paid ${interval.toLowerCase()}${active ? '' : ', paused'}` });
+      await set.mutateAsync({ asset: row.asset, weeklyPercent: w, interval, isActive: active, note: note.trim() || undefined });
+      toast.success(`${row.asset} return updated`, { description: `${trimPct(w)} a week (${trimPct(weeklyToApy(w), 2)} a year)${active ? '' : ', paused'}. Clients see it within seconds.` });
       setReviewing(false);
       setNote('');
     } catch (err) {
@@ -138,7 +146,7 @@ function RateRow({ row, maxApy, lastBy }: { row: YieldRateRow; maxApy: number; l
         <div className="mt-1 text-[12px] text-mist">
           {row.configured ? (
             <>
-              Now {row.apyPercent}% APY, {row.interval?.toLowerCase()}
+              Now {trimPct(Number(currentWeekly))} a week ({row.apyPercent ?? '-'}% a year), paid {row.interval?.toLowerCase()}
               {!row.isActive && <Badge variant="neutral" className="ml-1.5">Paused</Badge>}
               {row.updatedAt && <div>Changed {timeAgo(row.updatedAt)}{lastBy ? ` by ${lastBy}` : ''}</div>}
             </>
@@ -148,17 +156,17 @@ function RateRow({ row, maxApy, lastBy }: { row: YieldRateRow; maxApy: number; l
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[150px_auto_auto] sm:items-end">
+      <div className="grid gap-3 sm:grid-cols-[170px_auto_auto] sm:items-end">
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor={`apy-${row.asset}`}>APY</Label>
+          <Label htmlFor={`weekly-${row.asset}`}>Return per week</Label>
           <div className="relative">
             <Input
-              id={`apy-${row.asset}`}
+              id={`weekly-${row.asset}`}
               inputMode="decimal"
-              value={apy}
-              onChange={(e) => setApy(e.target.value.replace(/[^\d.]/g, ''))}
-              aria-invalid={!!apyError}
-              className="h-9 pr-8 text-right tabular"
+              value={weekly}
+              onChange={(e) => setWeekly(e.target.value.replace(/[^\d.]/g, ''))}
+              aria-invalid={!!weeklyError}
+              className="h-10 pr-8 text-right tabular"
             />
             <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[13px] text-mist">%</span>
           </div>
@@ -167,26 +175,27 @@ function RateRow({ row, maxApy, lastBy }: { row: YieldRateRow; maxApy: number; l
           <Label>Pays out</Label>
           <Segmented label={`${row.asset} payout interval`} value={interval} onChange={setInterval} options={[{ value: 'DAILY', label: 'Daily' }, { value: 'HOURLY', label: 'Hourly' }]} />
         </div>
-        <label className="flex h-9 items-center gap-2.5 text-[13px] text-mist">
+        <label className="flex h-10 items-center gap-2.5 text-[13px] text-mist">
           <Switch checked={active} onCheckedChange={setActive} aria-label={`${row.asset} payouts active`} />
           {active ? 'Active' : 'Paused'}
         </label>
-        <p className={cn('text-[12px] tabular sm:col-span-3', apyError ? 'text-down' : 'text-mist')}>
-          {apyError ?? (active && apyNum > 0 ? `Equivalent to ${perPeriod(apyNum, interval)}, compounding` : 'No interest will be paid')}
+        <p className={cn('text-[12px] tabular sm:col-span-3', weeklyError ? 'text-down' : 'text-mist')}>
+          {weeklyError ?? (active && w > 0 ? `= ${trimPct(weeklyToApy(w), 2)} a year · ${perPeriod(w, interval)}, compounding` : 'No return will be paid')}
         </p>
       </div>
 
       <div className="flex justify-end">
-        <Button size="sm" variant={dirty ? 'default' : 'outline'} disabled={!dirty || !!apyError} onClick={() => setReviewing(true)}>
+        <Button size="sm" variant={dirty ? 'default' : 'outline'} disabled={!dirty || !!weeklyError} onClick={() => setReviewing(true)}>
           Review change
         </Button>
       </div>
 
       {reviewing && (
         <ReviewDialog
-          title={`Change ${row.asset} interest?`}
+          title={`Change ${row.asset} return?`}
           rows={[
-            { label: 'APY', from: row.configured ? `${row.apyPercent}%` : 'Not set', to: `${apyNum}%` },
+            { label: 'Per week', from: row.configured ? trimPct(Number(currentWeekly)) : 'Not set', to: trimPct(w) },
+            { label: 'Per year (APY)', from: row.configured ? (row.apyPercent ?? '-') + '%' : '-', to: trimPct(weeklyToApy(w), 2) },
             { label: 'Payout', from: row.interval?.toLowerCase() ?? '—', to: interval.toLowerCase() },
             { label: 'Status', from: row.configured ? (row.isActive ? 'Active' : 'Paused') : '—', to: active ? 'Active' : 'Paused' },
           ]}
@@ -209,8 +218,12 @@ function InterestPanel() {
   const lastBy = (a: Asset) => history.data?.find((h) => h.assetType === a)?.createdBy?.email;
   return (
     <Panel
-      title="Interest rates"
-      description={overview.data ? `Per-asset APY paid to holdings with an active allocation. Ceiling ${overview.data.maxApyPercent}% APY.` : 'Per-asset APY paid to holdings with an active allocation.'}
+      title="Returns per week"
+      description={
+        overview.data
+          ? `One slot per active coin. Changes reach the website and every client portal within about 20 seconds and apply from the next payout. Highest allowed: ${trimPct(Number(overview.data.maxWeeklyPercent))} a week (${overview.data.maxApyPercent}% a year).`
+          : 'One slot per active coin.'
+      }
     >
       {!overview.data ? (
         <div className="flex flex-col gap-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)}</div>
@@ -218,7 +231,7 @@ function InterestPanel() {
         <ul className="divide-y divide-rule/70">
           {overview.data.rates.map((r) => (
             // Keyed on the saved version so the form resets after each confirmed change.
-            <RateRow key={`${r.asset}-${r.updatedAt ?? 'new'}`} row={r} maxApy={overview.data.maxApyPercent} lastBy={lastBy(r.asset)} />
+            <RateRow key={`${r.asset}-${r.updatedAt ?? 'new'}`} row={r} maxWeekly={Number(overview.data.maxWeeklyPercent)} lastBy={lastBy(r.asset)} />
           ))}
         </ul>
       )}
@@ -258,7 +271,7 @@ function ReferralForm({ settings }: { settings: SettingView[] }) {
 
   return (
     <>
-      <div className="grid gap-5 md:grid-cols-2">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-5 md:grid-cols-2">
         {settings.map((s, i) => (
           <div key={s.name} className="flex flex-col gap-1.5">
             <Label htmlFor={s.name}>{settingLabel(s.name)}</Label>
@@ -438,7 +451,7 @@ export function ParametersView() {
       <div className="flex flex-col gap-5">
         <InterestPanel />
         <ReferralPanel />
-        <div className="grid gap-5 xl:grid-cols-2">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-2">
           <HistoryPanel />
           <RunsPanel />
         </div>

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AssetType,
@@ -339,6 +339,77 @@ export class LedgerService {
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.ReadCommitted, maxWait: 5000, timeout: 15000 },
     );
+  }
+
+  /**
+   * Credits a deposit that staff verified by hand (shared-address deposits).
+   * Runs inside the caller's transaction so the credit commits or rolls back
+   * together with the caller's own state change. The USD price is fetched
+   * beforehand by the caller (no network calls inside a transaction).
+   */
+  async creditVerifiedDeposit(
+    tx: Prisma.TransactionClient,
+    args: {
+      userId: string;
+      asset: AssetType;
+      amount: Decimal;
+      network: BlockchainNetwork;
+      txHash: string;
+      address: string;
+      usdPrice: Decimal | null;
+      metadata: Record<string, unknown>;
+    },
+  ) {
+    const already = await tx.transaction.findFirst({
+      where: { network: args.network, blockchainTxHash: args.txHash, type: TransactionType.DEPOSIT, status: TransactionStatus.COMPLETED },
+      select: { id: true },
+    });
+    if (already) throw new ConflictException('This transaction has already been credited');
+
+    const now = new Date();
+    const deposit = await tx.transaction.create({
+      data: {
+        userId: args.userId,
+        type: TransactionType.DEPOSIT,
+        assetType: args.asset,
+        amount: args.amount,
+        status: TransactionStatus.COMPLETED,
+        network: args.network,
+        blockchainTxHash: args.txHash,
+        address: args.address,
+        confirmedAt: now,
+        metadata: { ...args.metadata, ...(args.asset === AssetType.USDT ? { contractAddress: this.usdtContract } : {}) } as Prisma.InputJsonValue,
+      },
+    });
+    await tx.balance.upsert({
+      where: { userId_assetType: { userId: args.userId, assetType: args.asset } },
+      create: { userId: args.userId, assetType: args.asset, balance: args.amount },
+      update: { balance: { increment: args.amount } },
+    });
+    const referralBonus = await this.applyReferralReward(tx, {
+      userId: args.userId,
+      depositId: deposit.id,
+      asset: args.asset,
+      amount: args.amount,
+      usdPrice: args.usdPrice,
+      now,
+    });
+    this.logger.log(`Credited verified deposit ${args.amount.toString()} ${args.asset} to ${args.userId} (tx ${deposit.id})`);
+    return { transactionId: deposit.id, referralBonus };
+  }
+
+  /** USD price for crediting outside the webhook path; null when unavailable. */
+  async usdPriceOrNull(asset: AssetType): Promise<Decimal | null> {
+    if (asset === AssetType.USDT) return new Decimal(1);
+    try {
+      return await this.prices.getUsdPrice(asset);
+    } catch {
+      return null;
+    }
+  }
+
+  get usdtContractAddress(): string {
+    return this.usdtContract;
   }
 
   private async applyReferralReward(

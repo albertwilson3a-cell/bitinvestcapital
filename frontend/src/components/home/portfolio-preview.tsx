@@ -11,7 +11,7 @@ export function PortfolioPreview() {
   const bars = [18, 22, 21, 27, 30, 29, 34, 38, 37, 42, 46, 50];
   return (
     <div className="relative" aria-label="Illustration of the client dashboard">
-      <div aria-hidden="true" className="absolute -inset-6 rounded-[32px] bg-[radial-gradient(ellipse_at_center,color-mix(in_oklab,var(--brass)_14%,transparent),transparent_70%)]" />
+      <div aria-hidden="true" className="absolute -inset-y-6 inset-x-0 rounded-[32px] sm:-inset-x-6 bg-[radial-gradient(ellipse_at_center,color-mix(in_oklab,var(--brass)_14%,transparent),transparent_70%)]" />
       <div className="relative rounded-2xl border border-rule-strong bg-vault p-5 shadow-2xl">
         <div className="flex items-center justify-between">
           <p className="text-[12px] text-mist">Net worth</p>

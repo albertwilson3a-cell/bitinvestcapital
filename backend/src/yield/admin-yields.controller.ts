@@ -25,15 +25,16 @@ export class AdminYieldsController {
       rates: await this.rates.matrix(),
       affiliateYieldRewardRate: (await this.settings.getDecimal('affiliateYieldRewardRate')).toFixed(),
       maxApyPercent: this.rates.maxApyPercent,
+      maxWeeklyPercent: this.rates.maxWeeklyPercent,
       schedule: { daily: '0 0 * * * (UTC)', hourly: '0 * * * * (UTC)' },
     };
   }
 
-  /** Body: { "apyPercent": 6.5, "interval": "DAILY", "isActive": true, "note": "Q4 lending desk rates" } */
+  /** Body: { "apyPercent": "6.5", "interval": "DAILY", "isActive": true, "note": "Q4 lending desk rates" } */
   @Put(':asset')
   async setRate(@Param() p: YieldAssetParamDto, @Body() dto: UpdateYieldRateDto, @CurrentUser() admin: AuthUser, @Ip() ip: string) {
     const matrix = await this.rates.set(p.asset, dto, admin.id);
-    await this.audit.record({ actorId: admin.id, action: 'yield_rate.update', targetType: 'asset', targetId: p.asset, details: { apyPercent: dto.apyPercent, interval: dto.interval, isActive: dto.isActive, note: dto.note }, ip });
+    await this.audit.record({ actorId: admin.id, action: 'yield_rate.update', targetType: 'asset', targetId: p.asset, details: { weeklyPercent: dto.weeklyPercent, apyPercent: dto.apyPercent, interval: dto.interval, isActive: dto.isActive, note: dto.note }, ip });
     return matrix;
   }
 

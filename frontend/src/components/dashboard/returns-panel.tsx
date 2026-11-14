@@ -9,7 +9,7 @@ import { CoinMark } from '@/components/market/coin-mark';
 import { Skeleton } from '@/components/ui/skeleton';
 import { growth } from '@/components/site/calculators';
 import { useAllocations, usePortfolio } from '@/hooks/use-dashboard';
-import { usePublicRates } from '@/hooks/use-public';
+import { usePublicRates, weeklyLabel } from '@/hooks/use-public';
 import { coinColor } from '@/lib/coins';
 import { formatUsd } from '@/lib/format';
 import type { Asset } from '@/lib/types';
@@ -21,6 +21,8 @@ interface Line {
   asset: Asset;
   usd: number;
   apy: number;
+  apyPercent: string;
+  weekly: string;
   interval: 'DAILY' | 'HOURLY';
 }
 
@@ -60,7 +62,14 @@ export function ReturnsPanel({ className }: { className?: string }) {
       const rate = rates.data.yields.find((y) => y.asset === asset);
       const row = portfolio.data!.rows.find((r) => r.asset === asset);
       if (!rate || !row?.usd) return [];
-      return [{ asset, usd: row.usd, apy: Number(rate.apyPercent), interval: rate.interval }];
+      return [{
+        asset,
+        usd: row.usd,
+        apy: Number(rate.apyPercent),
+        apyPercent: rate.apyPercent,
+        weekly: rate.weeklyPercent,
+        interval: rate.interval,
+      }];
     });
   }, [portfolio.data, allocations.data, rates.data]);
 
@@ -131,7 +140,7 @@ export function ReturnsPanel({ className }: { className?: string }) {
                 <span className="flex items-center gap-2.5">
                   <CoinMark symbol={l.asset} size="sm" />
                   <span className="font-medium">{l.asset}</span>
-                  <span className="text-mist">{formatUsd(l.usd)} at {l.apy.toFixed(2)}% a year, paid {l.interval === 'HOURLY' ? 'hourly' : 'daily'}</span>
+                  <span className="text-mist">{formatUsd(l.usd)} at {weeklyLabel(l.weekly)} a week ({l.apyPercent}% a year), paid {l.interval === 'HOURLY' ? 'hourly' : 'daily'}</span>
                 </span>
                 <span className="tabular text-up">+{formatUsd(l.usd * (growth(l.apy, 1) - 1))} / year</span>
               </li>

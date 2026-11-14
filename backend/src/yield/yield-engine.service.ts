@@ -39,9 +39,10 @@ const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
  *    transaction of four set-based statements (no per-user round trips).
  *  - Payout rows are unique per (run, user, asset) and affiliate rows per source
  *    payout, so a crashed run can be resumed without double-paying anyone.
- *  - Principal = current balance − external inflows (deposits, deposit referral
- *    bonuses) credited after the period started: money must be held through the
- *    whole period to earn for it. Earlier yield and affiliate rewards compound.
+ *  - Only invested funds earn (balances.invested_balance; the wallet balance does not).
+ *    Principal = invested balance − amounts invested after the period started:
+ *    money must be invested through the whole period to earn for it. Payouts are
+ *    added to the investment, so they compound. Affiliate rewards go to the wallet.
  */
 @Injectable()
 export class YieldEngineService {
@@ -183,12 +184,10 @@ export class YieldEngineService {
             FROM jsonb_to_recordset(${ratesJson}::jsonb) AS r(asset text, rate text, decimals int)
           ),
           candidates AS (
-            SELECT b.id AS balance_id, b.user_id, b.asset_type, b.balance
+            SELECT b.id AS balance_id, b.user_id, b.asset_type, b.invested_balance AS balance
             FROM "balances" b
-            JOIN "dynamic_allocations" a
-              ON a.user_id = b.user_id AND a.asset_type = b.asset_type AND a.active_status
             WHERE b.asset_type::text IN (SELECT asset FROM rates)
-              AND b.balance > 0
+              AND b.invested_balance > 0
               AND b.id > ${cursor}::uuid
             ORDER BY b.id
             LIMIT ${this.batchSize}::int
@@ -200,10 +199,7 @@ export class YieldEngineService {
             JOIN candidates c ON c.user_id = t.user_id AND c.asset_type = t.asset_type
             WHERE t.status = 'completed'
               AND t.confirmed_at > ${run.periodStart}::timestamptz
-              AND (
-                t.type IN ('deposit', 'referral_bonus')
-                OR (t.type = 'affiliate_yield_reward' AND t.metadata->>'yieldRunId' = ${run.id}::text)
-              )
+              AND t.type = 'invest'
             GROUP BY t.user_id, t.asset_type
           ),
           computed AS (
@@ -241,7 +237,7 @@ export class YieldEngineService {
         // 2. Credit holders (rows already locked in step 1).
         await tx.$executeRaw`
           UPDATE "balances" b
-          SET balance = b.balance + t.amount,
+          SET invested_balance = b.invested_balance + t.amount,
               flexible_yield_earned = b.flexible_yield_earned + t.amount,
               updated_at = now()
           FROM "transactions" t

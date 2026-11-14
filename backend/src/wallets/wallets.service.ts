@@ -43,7 +43,7 @@ export class WalletsService {
   async getWallets(userId: string) {
     const [balances, addresses] = await Promise.all([
       this.prisma.balance.findMany({ where: { userId } }),
-      this.addresses.getAllForUser(userId),
+      this.addresses.allForClient(userId),
     ]);
     return Object.values(AssetType).map((asset) => {
       const b = balances.find((x) => x.assetType === asset);
@@ -53,19 +53,22 @@ export class WalletsService {
         network: ASSET_NETWORK[asset],
         balance: b?.balance ?? new Prisma.Decimal(0),
         lockedBalance: b?.lockedBalance ?? new Prisma.Decimal(0),
+        investedBalance: b?.investedBalance ?? new Prisma.Decimal(0),
         flexibleYieldEarned: b?.flexibleYieldEarned ?? new Prisma.Decimal(0),
         depositAddress: a.address,
+        depositMode: a.shared ? ('shared' as const) : ('dedicated' as const),
         requiredConfirmations: this.minConfirmations[asset],
       };
     });
   }
 
   async getDepositAddress(userId: string, asset: AssetType) {
-    const a = await this.addresses.getOrCreate(userId, asset);
+    const a = await this.addresses.forClient(userId, asset);
     return {
       asset,
       network: a.network,
       address: a.address,
+      depositMode: a.shared ? ('shared' as const) : ('dedicated' as const),
       requiredConfirmations: this.minConfirmations[asset],
       ...(asset === AssetType.USDT ? { tokenStandard: 'ERC-20' } : {}),
     };

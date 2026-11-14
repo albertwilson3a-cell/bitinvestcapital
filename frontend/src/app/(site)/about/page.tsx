@@ -17,7 +17,7 @@ export default function AboutPage() {
       <PageHero
         eyebrow="About us"
         title="Making digital assets simpler to hold, and safer to grow."
-        intro={`${APP_NAME} is a platform for holding Bitcoin, Ethereum and stablecoins, choosing how your portfolio is split and earning variable yield, with every rate, payout and fee shown openly.`}
+        intro={`${APP_NAME} is a platform for holding Bitcoin, Ethereum and stablecoins, investing any amount from $50 and earning a variable return, with every rate, payout and fee shown openly.`}
       />
 
       <Section eyebrow="Why we exist" title="Crypto should be understandable.">
@@ -28,7 +28,7 @@ export default function AboutPage() {
               keep it safe, what a reasonable return looks like, and how to tell a real opportunity from a scheme that will collapse.
             </p>
             <p>
-              We built {APP_NAME} to make those things clear. You get dedicated deposit addresses, a portfolio you control with simple sliders, live
+              We built {APP_NAME} to make those things clear. You get simple, reviewed deposits, a portfolio you control with simple sliders, live
               market data for the coins that matter, and yield that is published openly and paid automatically.
             </p>
           </div>
@@ -52,7 +52,7 @@ export default function AboutPage() {
             { icon: Scale, title: 'Honest returns', body: 'We publish variable annual rates that reflect real market yield, and we never guarantee returns.' },
             { icon: Lock, title: 'Security first', body: 'Watch-only deposit keys, verified deposits, two-person approval and a permanent audit trail.' },
             { icon: Compass, title: 'Clarity over jargon', body: 'Plain-English explanations on every page, and a learning centre for going deeper.' },
-            { icon: HandCoins, title: 'You stay in control', body: 'Choose which assets earn, change your allocation at any time, and see exactly what you hold.' },
+            { icon: HandCoins, title: 'You stay in control', body: 'Choose how much to invest, move funds back to your wallet any time, and see exactly what you hold.' },
             { icon: MessageSquareText, title: 'Real support', body: 'Questions are answered by people who understand both crypto and our platform.' },
           ]}
         />

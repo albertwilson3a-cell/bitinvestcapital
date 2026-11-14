@@ -28,7 +28,7 @@ function Slider({
       {values.map((_, i) => (
         <SliderPrimitive.Thumb
           key={i}
-          className="block size-4 rounded-full border-2 border-brass bg-ink shadow-[0_0_0_4px_rgba(10,18,32,0.9)] transition-[box-shadow,transform] outline-none hover:scale-110 focus-visible:ring-4 focus-visible:ring-brass/30 data-[disabled]:cursor-not-allowed"
+          className="block size-4 rounded-full border-2 border-brass bg-ink shadow-[0_0_0_4px_color-mix(in_oklab,var(--ink)_90%,transparent)] transition-[box-shadow,transform] outline-none hover:scale-110 focus-visible:ring-4 focus-visible:ring-brass/30 data-[disabled]:cursor-not-allowed"
         />
       ))}
     </SliderPrimitive.Root>

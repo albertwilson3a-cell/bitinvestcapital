@@ -8,6 +8,17 @@ import {
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ASSET_NETWORK } from './chains.js';
 import { HdDerivationService } from './hd-derivation.service.js';
+import { readFixedAddresses, type FixedAddresses } from './fixed-addresses.js';
+import { ConfigService } from '@nestjs/config';
+
+/** What a client is shown: their own HD address, or the platform's shared address. */
+export interface ClientDepositAddress {
+  assetType: AssetType;
+  network: BlockchainNetwork;
+  address: string;
+  /** true: one address for all clients; the client must report the transaction hash. */
+  shared: boolean;
+}
 
 /** Raw-SQL values of the blockchain_network enum (Prisma @map targets). */
 const NETWORK_DB_VALUE: Record<BlockchainNetwork, string> = {
@@ -17,10 +28,38 @@ const NETWORK_DB_VALUE: Record<BlockchainNetwork, string> = {
 
 @Injectable()
 export class DepositAddressService {
+  private readonly fixed: FixedAddresses;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly hd: HdDerivationService,
-  ) {}
+    config: ConfigService,
+  ) {
+    this.fixed = readFixedAddresses(config);
+  }
+
+  /** The shared platform address for an asset, if one is configured. */
+  sharedAddress(assetType: AssetType): string | null {
+    return this.fixed[assetType] ?? null;
+  }
+
+  /** Every address that belongs to the platform for this network (shared + derived lookups use the table). */
+  isSharedAddress(address: string): boolean {
+    const a = address.toLowerCase();
+    return Object.values(this.fixed).some((f) => f?.toLowerCase() === a);
+  }
+
+  /** Address to show a client: shared when configured, otherwise their own derived address. */
+  async forClient(userId: string, assetType: AssetType): Promise<ClientDepositAddress> {
+    const shared = this.fixed[assetType];
+    if (shared) return { assetType, network: ASSET_NETWORK[assetType], address: shared, shared: true };
+    const own = await this.getOrCreate(userId, assetType);
+    return { assetType, network: own.network, address: own.address, shared: false };
+  }
+
+  async allForClient(userId: string): Promise<ClientDepositAddress[]> {
+    return Promise.all(Object.values(AssetType).map((asset) => this.forClient(userId, asset)));
+  }
 
   /**
    * Returns the user's dedicated address for an asset, deriving it on first use.

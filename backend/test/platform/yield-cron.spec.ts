@@ -33,7 +33,7 @@ describe('Suite 4: Yield distribution cron', () => {
   const admin = { id: '' };
   const people: Record<string, Holder> = {};
 
-  /** Creates a user with balances, allocations and referral links as real related rows. */
+  /** Creates a user with wallet/invested balances and referral links as real related rows. */
   async function holder(name: string, holdings: Holder['holdings'], allocated: AssetType[], referredBy?: string) {
     const user = await h.prisma.user.create({
       data: {
@@ -43,9 +43,11 @@ describe('Suite 4: Yield distribution cron', () => {
         verifiedAt: new Date(),
         referralCode: randomBytes(5).toString('hex').toUpperCase(),
         referredByUserId: referredBy ?? null,
-        balances: { create: (['USDT', 'ETH', 'BTC'] as AssetType[]).map((a) => ({ assetType: a, balance: holdings[a] ?? '0' })) },
-        dynamicAllocations: {
-          create: allocated.map((a) => ({ assetType: a, allocationPercentage: new D(100).div(allocated.length).toDecimalPlaces(2), activeStatus: true })),
+        // "Allocated" holdings are invested (they earn); the rest sit in the wallet.
+        balances: {
+          create: (['USDT', 'ETH', 'BTC'] as AssetType[]).map((a) =>
+            allocated.includes(a) ? { assetType: a, investedBalance: holdings[a] ?? '0' } : { assetType: a, balance: holdings[a] ?? '0' },
+          ),
         },
         ...(referredBy ? { referralReceived: { create: { referrerId: referredBy, registrationStatus: 'VERIFIED' } } } : {}),
       },
@@ -71,18 +73,18 @@ describe('Suite 4: Yield distribution cron', () => {
       })
     ).id;
     const rates = h.app.get(YieldRatesService);
-    await rates.set('USDT', { apyPercent: Number(APY.USDT), interval: YieldInterval.DAILY, isActive: true }, admin.id);
-    await rates.set('BTC', { apyPercent: Number(APY.BTC), interval: YieldInterval.DAILY, isActive: true }, admin.id);
-    await rates.set('ETH', { apyPercent: Number(APY.ETH), interval: YieldInterval.HOURLY, isActive: true }, admin.id); // not a daily asset
+    await rates.set('USDT', { apyPercent: APY.USDT, interval: YieldInterval.DAILY, isActive: true }, admin.id);
+    await rates.set('BTC', { apyPercent: APY.BTC, interval: YieldInterval.DAILY, isActive: true }, admin.id);
+    await rates.set('ETH', { apyPercent: APY.ETH, interval: YieldInterval.HOURLY, isActive: true }, admin.id); // not a daily asset
 
     const ref = await holder('referrer', { USDT: '1000' }, ['USDT']);
     const alice = await holder('alice', { USDT: '25000', BTC: '0.8', ETH: '5' }, ['USDT', 'BTC', 'ETH'], ref);
     await holder('bob', { USDT: '12000.5' }, ['USDT'], ref);
     await holder('grandchild', { USDT: '4000' }, ['USDT'], alice); // referred by alice → alice earns, referrer does not
     await holder('idle', { USDT: '50000' }, []); // holds funds but never allocated
-    await holder('fresh', { USDT: '9000' }, ['USDT']); // 9,000 arrives during the period below
+    await holder('fresh', { USDT: '9000' }, ['USDT']); // 9,000 is invested during the period below
     await h.prisma.transaction.create({
-      data: { userId: people.fresh.id, type: 'DEPOSIT', assetType: 'USDT', amount: '9000', status: 'COMPLETED', confirmedAt: new Date() },
+      data: { userId: people.fresh.id, type: 'INVEST', assetType: 'USDT', amount: '9000', status: 'COMPLETED', confirmedAt: new Date() },
     });
   });
   afterAll(async () => h?.close());
@@ -140,7 +142,7 @@ describe('Suite 4: Yield distribution cron', () => {
       expect(expectedYield('25000', 'USDT').toString()).toBe('5.271859');
     });
 
-    it('skips holdings that are not allocated, assets paid hourly, and money deposited mid-period', async () => {
+    it('skips wallet-only holdings, assets paid hourly, and money invested mid-period', async () => {
       const count = (name: string, asset?: AssetType) =>
         h.prisma.transaction.count({ where: { yieldRunId: runId, userId: people[name].id, ...(asset ? { assetType: asset } : {}) } });
       expect(await count('idle')).toBe(0);
@@ -177,17 +179,18 @@ describe('Suite 4: Yield distribution cron', () => {
             },
           });
           const expected = new D(p.holdings[a] ?? '0').plus(posted._sum.amount ?? 0);
-          expect((await bal(name, a)).balance.toString(), `${name} ${a}`).toBe(expected.toString());
+          const row = await bal(name, a);
+          expect(row.balance.plus(row.investedBalance).toString(), `${name} ${a}`).toBe(expected.toString());
         }
       }
     });
 
     it('is idempotent: firing the cron again for the same period pays nothing more', async () => {
-      const before = (await bal('alice', 'USDT')).balance.toString();
+      const before = (await bal('alice', 'USDT')).investedBalance.toString();
       const n = await h.prisma.transaction.count();
       await scheduler.daily();
       expect(await h.prisma.transaction.count()).toBe(n);
-      expect((await bal('alice', 'USDT')).balance.toString()).toBe(before);
+      expect((await bal('alice', 'USDT')).investedBalance.toString()).toBe(before);
     });
   });
 
@@ -200,20 +203,20 @@ describe('Suite 4: Yield distribution cron', () => {
 
     expect((await engine.runLatest(YieldInterval.DAILY, 'scheduler', day1)).status).toBe('completed');
     const p1 = trunc(new D(100000).mul(r), 6);
-    expect((await bal('compounder', 'USDT')).balance.toString()).toBe(new D(100000).plus(p1).toString());
+    expect((await bal('compounder', 'USDT')).investedBalance.toString()).toBe(new D(100000).plus(p1).toString());
 
     expect((await engine.runLatest(YieldInterval.DAILY, 'scheduler', day2)).status).toBe('completed');
     const p2 = trunc(new D(100000).plus(p1).mul(r), 6);
     expect(p2.gt(p1)).toBe(true);
     const final = await bal('compounder', 'USDT');
-    expect(final.balance.toString()).toBe(new D(100000).plus(p1).plus(p2).toString());
+    expect(final.investedBalance.toString()).toBe(new D(100000).plus(p1).plus(p2).toString());
     expect(final.flexibleYieldEarned.toString()).toBe(p1.plus(p2).toString());
   });
 
   it('pays nothing when an asset’s rate is paused, and nothing at all when the scheduler is disabled', async () => {
     const rates = h.app.get(YieldRatesService);
-    await rates.set('USDT', { apyPercent: Number(APY.USDT), interval: YieldInterval.DAILY, isActive: false }, admin.id);
-    await rates.set('BTC', { apyPercent: Number(APY.BTC), interval: YieldInterval.DAILY, isActive: false }, admin.id);
+    await rates.set('USDT', { apyPercent: APY.USDT, interval: YieldInterval.DAILY, isActive: false }, admin.id);
+    await rates.set('BTC', { apyPercent: APY.BTC, interval: YieldInterval.DAILY, isActive: false }, admin.id);
     const result = await engine.runLatest(YieldInterval.DAILY, 'scheduler', new Date('2031-03-04T00:00:05Z'));
     expect(result).toMatchObject({ status: 'skipped', reason: 'no_active_rates_for_interval' });
 

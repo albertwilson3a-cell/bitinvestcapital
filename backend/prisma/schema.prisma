@@ -48,6 +48,9 @@ enum TransactionType {
   // Manual corrections, applied only after a second admin approves them.
   ADJUSTMENT_CREDIT @map("adjustment_credit")
   ADJUSTMENT_DEBIT  @map("adjustment_debit")
+  // Client moves funds from their BitInvest wallet into their investment, and back.
+  INVEST            @map("invest")
+  REDEEM            @map("redeem")
 
   @@map("transaction_type")
 }
@@ -156,6 +159,8 @@ model User {
   withdrawalsReviewed  WithdrawalRequest[] @relation("WithdrawalReviewer")
   withdrawalsCompleted WithdrawalRequest[] @relation("WithdrawalCompleter")
   withdrawalSettings   WithdrawalSetting[]
+  depositClaims        DepositClaim[] @relation("DepositClaimOwner")
+  depositClaimsReviewed DepositClaim[] @relation("DepositClaimReviewer")
 
   @@index([referredByUserId])
   @@index([role])
@@ -185,6 +190,9 @@ model Balance {
   assetType           AssetType @map("asset_type")
   balance             Decimal   @default(0) @db.Decimal(36, 18)
   lockedBalance       Decimal   @default(0) @map("locked_balance") @db.Decimal(36, 18)
+  /// Funds the client has put into their investment. Earns the asset's weekly rate;
+  /// payouts compound here. `balance` is the BitInvest wallet (withdrawable).
+  investedBalance     Decimal   @default(0) @map("invested_balance") @db.Decimal(36, 18)
   flexibleYieldEarned Decimal   @default(0) @map("flexible_yield_earned") @db.Decimal(36, 18)
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -240,6 +248,7 @@ model Transaction {
   derivedTransaction Transaction? @relation("TransactionSource")
   adjustment        BalanceAdjustment?
   withdrawal        WithdrawalRequest?
+  depositClaim      DepositClaim?
   yieldRun          YieldRun?     @relation(fields: [yieldRunId], references: [id], onDelete: Restrict)
 
   // Idempotency: an on-chain output can only ever be recorded once.
@@ -298,7 +307,10 @@ model YieldRate {
   id              String        @id @default(uuid()) @db.Uuid
   assetType       AssetType     @map("asset_type")
   /// Annual percentage yield, e.g. 5.25 = 5.25% APY (compounded per payout interval).
-  apyPercent      Decimal       @map("apy_percent") @db.Decimal(9, 4)
+  apyPercent      Decimal       @map("apy_percent") @db.Decimal(30, 4)
+  /// Rate as the admin entered it, per week (e.g. 0.1742 = 0.1742% a week).
+  /// apyPercent is derived from it: (1 + w)^(365/7) − 1. Null for rates set as APY.
+  weeklyPercent   Decimal?      @map("weekly_percent") @db.Decimal(12, 6)
   interval        YieldInterval
   isActive        Boolean       @default(true) @map("is_active")
   note            String?       @db.VarChar(280)
@@ -539,4 +551,49 @@ model WithdrawalSetting {
   updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
 
   @@map("withdrawal_settings")
+}
+
+enum DepositClaimStatus {
+  PENDING_REVIEW @map("pending_review")
+  CREDITED       @map("credited")
+  REJECTED       @map("rejected")
+  CANCELLED      @map("cancelled")
+
+  @@map("deposit_claim_status")
+}
+
+/// A client's report of a deposit sent to a shared (fixed) platform address.
+/// Shared addresses cannot identify the sender, so staff check the transaction
+/// on-chain and credit the confirmed amount. A transaction hash can back at
+/// most one open or credited report (partial unique index in the migration).
+model DepositClaim {
+  id              String             @id @default(uuid()) @db.Uuid
+  userId          String             @map("user_id") @db.Uuid
+  assetType       AssetType          @map("asset_type")
+  network         BlockchainNetwork
+  /// The platform address the client says they paid.
+  address         String             @db.VarChar(128)
+  txHash          String             @map("tx_hash") @db.VarChar(128)
+  /// Amount the client says they sent.
+  reportedAmount  Decimal            @map("reported_amount") @db.Decimal(36, 18)
+  /// Amount staff confirmed on-chain and credited.
+  creditedAmount  Decimal?           @map("credited_amount") @db.Decimal(36, 18)
+  fromAddress     String?            @map("from_address") @db.VarChar(128)
+  clientNote      String?            @map("client_note") @db.VarChar(500)
+  status          DepositClaimStatus @default(PENDING_REVIEW)
+  reviewedById    String?            @map("reviewed_by_id") @db.Uuid
+  reviewedAt      DateTime?          @map("reviewed_at") @db.Timestamptz(6)
+  reviewNote      String?            @map("review_note") @db.VarChar(500)
+  transactionId   String?            @unique @map("transaction_id") @db.Uuid
+  createdAt       DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User         @relation("DepositClaimOwner", fields: [userId], references: [id], onDelete: Restrict)
+  reviewedBy  User?        @relation("DepositClaimReviewer", fields: [reviewedById], references: [id], onDelete: Restrict)
+  transaction Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([network, txHash])
+  @@map("deposit_claims")
 }

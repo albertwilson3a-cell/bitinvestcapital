@@ -149,7 +149,7 @@ export default async function CoinPage({ params }: PageProps<'/markets/[symbol]'
         </div>
       </Section>
 
-      <CtaBand title={`Follow ${coin.name} from your dashboard.`} body="Create a free account to track every coin, set your allocation and earn variable yield on the assets you hold." secondary={{ href: '/markets', label: 'All markets' }} />
+      <CtaBand title={`Follow ${coin.name} from your dashboard.`} body="Create a free account to track every coin, and invest from $50 to earn a weekly return." secondary={{ href: '/markets', label: 'All markets' }} />
     </>
   );
 }

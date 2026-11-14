@@ -13,6 +13,7 @@ import {
   WithdrawalStatus,
 } from '../generated/prisma/client.js';
 import { MailService } from '../mail/mail.service.js';
+import { DepositAddressService } from '../wallets/deposit-address.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ASSET_DECIMALS, ASSET_NETWORK, btcNetworkFor, InvalidAddressError, normalizeAddress } from '../wallets/chains.js';
 
@@ -56,6 +57,7 @@ export class WithdrawalsService {
     private readonly challenges: ChallengeService,
     private readonly mail: MailService,
     private readonly audit: AuditService,
+    private readonly addresses: DepositAddressService,
     config: ConfigService,
   ) {
     this.btcNetwork = btcNetworkFor(config.get<string>('BTC_NETWORK') ?? 'mainnet');
@@ -316,7 +318,7 @@ export class WithdrawalsService {
     if (!setting.enabled) throw new BadRequestException(`${asset} withdrawals are temporarily unavailable`);
     const network = ASSET_NETWORK[asset];
     const address = this.address(network, rawAddress);
-    if (await this.prisma.depositAddress.findUnique({ where: { address } })) {
+    if (this.addresses.isSharedAddress(address) || (await this.prisma.depositAddress.findUnique({ where: { address } }))) {
       throw new BadRequestException('That is a BitInvest Capital deposit address. Withdraw to an external wallet instead.');
     }
     const amount = this.decimal(rawAmount, asset, 'amount', false);

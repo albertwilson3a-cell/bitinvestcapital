@@ -58,11 +58,11 @@ export const COIN_LIST: CoinInfo[] = [
     depositNotes: [
       'Send only BTC on the Bitcoin network to your BitInvest Capital BTC address.',
       'Your address starts with bc1q. Addresses from other networks (for example BNB Smart Chain “BTCB”) are not compatible.',
-      'Deposits are credited after 3 network confirmations, usually about 30 minutes.',
+      'After sending, report the transaction ID from your dashboard. We credit it once it has 3 network confirmations and our team has checked it.',
     ],
     risks: 'Bitcoin’s price can move 10% or more in a day and has fallen by more than 70% from previous peaks several times. Transactions cannot be reversed once confirmed, so sending to a wrong address means the funds are lost.',
     faq: [
-      { q: 'How long does a BTC deposit take?', a: 'Bitcoin produces a block about every 10 minutes. We credit your balance after 3 confirmations, so most deposits appear within 30 to 60 minutes, depending on the fee the sender paid.' },
+      { q: 'How long does a BTC deposit take?', a: 'Bitcoin produces a block about every 10 minutes. After you report the transaction, our team checks it once it has 3 confirmations (30 to 60 minutes, depending on the fee paid) and credits your balance, usually within a few hours.' },
       { q: 'Can I send bitcoin from an exchange?', a: 'Yes. Choose the Bitcoin network (sometimes labelled BTC or “Bitcoin (SegWit)”) when you withdraw, and paste your BitInvest Capital BTC address.' },
       { q: 'What is a satoshi?', a: 'The smallest unit of bitcoin: one hundred-millionth of a BTC. Balances are tracked to 8 decimal places.' },
     ],
@@ -96,11 +96,11 @@ export const COIN_LIST: CoinInfo[] = [
     depositNotes: [
       'Send only ETH on the Ethereum mainnet to your BitInvest Capital ETH address.',
       'Do not send ETH from Arbitrum, BNB Smart Chain or other networks to this address: even though the address looks the same, those are different networks.',
-      'Deposits are credited after 12 network confirmations, usually under 5 minutes.',
+      'After sending, report the transaction hash from your dashboard. We credit it once it has 12 network confirmations and our team has checked it.',
     ],
     risks: 'ETH is volatile and its value depends heavily on activity in the Ethereum ecosystem. Smart contracts can contain bugs, and network fees can make small transfers expensive at busy times.',
     faq: [
-      { q: 'Is my ETH address the same as my USDT address?', a: 'No. Both are Ethereum addresses, but we give each asset its own address so deposits are always matched to the right balance. Use the address shown for the asset you are sending.' },
+      { q: 'Is my ETH address the same as my USDT address?', a: 'Both are Ethereum addresses. When you report a deposit, choose the asset you actually sent (ETH or USDT) so it is credited to the right balance.' },
       { q: 'Why do I need ETH to send tokens on Ethereum?', a: 'Network fees on Ethereum are always paid in ETH, even when you are sending a token such as USDT. Keep a little ETH in the wallet you are sending from.' },
       { q: 'What happened in The Merge?', a: 'Ethereum replaced mining with Proof of Stake in September 2022. Blocks are now produced by validators who lock up ETH, which drastically reduced the network’s energy consumption.' },
     ],
@@ -138,7 +138,7 @@ export const COIN_LIST: CoinInfo[] = [
     depositNotes: [
       'We currently accept USDT on Ethereum (ERC-20) only. Choose “Ethereum” or “ERC-20” as the network when you send.',
       'Sending TRC-20 or BEP-20 USDT to your Ethereum address will not be credited.',
-      'Deposits are credited after 12 Ethereum confirmations.',
+      'Report the transaction hash after sending; it is credited once it has 12 Ethereum confirmations and has been checked.',
     ],
     risks: 'A stablecoin is only as good as its issuer and reserves. USDT has briefly traded below $1 during market stress, and stablecoin issuers can freeze tokens at specific addresses.',
     faq: [
