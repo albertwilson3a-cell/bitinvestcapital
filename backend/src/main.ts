@@ -11,9 +11,15 @@ async function bootstrap(): Promise<void> {
   });
   configureApp(app);
 
-  const port = app.get(ConfigService).get<number>('PORT') ?? 3000;
-  await app.listen(port);
-  Logger.log(`Server listening on http://localhost:${port}`, 'Bootstrap');
+  const configuredPort = app.get(ConfigService).get<string>('PORT');
+  const port = configuredPort ? Number(configuredPort) : 3000;
+
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error(`Invalid PORT configuration: ${configuredPort}`);
+  }
+
+  await app.listen(port, '0.0.0.0');
+  Logger.log(`Server listening on port ${port}`, 'Bootstrap');
 }
 
 await bootstrap();
